@@ -1,16 +1,19 @@
 import React from "react";
 
-// Helper: get color string
+// Helper: get color string for suit
 function colorForSuit(suit) {
     if (!suit) return "#222";
     return suit.color === "red" ? "#e94b4b" : "#222";
 }
 
 export default function PlayingCardView({ card, style = {}, size = 90 }) {
+    // Defensive: if no card, render nothing
+    if (!card) return null;
+
     // size: width of card in px, height auto (2.5:3.5 ratio)
     const cardHeight = Math.round(size * 1.4);
 
-    // For face down
+    // Face down card
     if (!card.isFaceUp) {
         return (
             <div
@@ -28,24 +31,33 @@ export default function PlayingCardView({ card, style = {}, size = 90 }) {
                     ...style,
                 }}
             >
-        <span
-            style={{
-                fontSize: size * 0.7,
-                color: "#fff",
-                opacity: 0.93,
-                userSelect: "none",
-                textShadow: "0 1.5px 1.5px #0007",
-            }}
-            aria-label="Card back"
-        >
-          🂠
-        </span>
+                <span
+                    style={{
+                        fontSize: size * 0.7,
+                        color: "#fff",
+                        opacity: 0.93,
+                        userSelect: "none",
+                        textShadow: "0 1.5px 1.5px #0007",
+                    }}
+                    aria-label="Card back"
+                >
+                    🂠
+                </span>
             </div>
         );
     }
 
-    // For face up
+    // Face up card
     const color = colorForSuit(card.suit);
+
+    // Defensive: check suit and rank
+    const displayRank = card.rank?.display ?? "?";
+    const displaySuit = card.suit?.symbol ?? "?";
+    const suitKey =
+        card.suit?.key
+            ? card.suit.key.charAt(0).toUpperCase() + card.suit.key.slice(1)
+            : "?";
+
     return (
         <div
             style={{
@@ -59,7 +71,7 @@ export default function PlayingCardView({ card, style = {}, size = 90 }) {
                 overflow: "hidden",
                 ...style,
             }}
-            aria-label={`${card.rank.display} of ${card.suit.key[0].toUpperCase() + card.suit.key.slice(1)}`}
+            aria-label={`${displayRank} of ${suitKey}`}
         >
             {/* Corner: top-left */}
             <div
@@ -75,8 +87,8 @@ export default function PlayingCardView({ card, style = {}, size = 90 }) {
                     lineHeight: "1",
                 }}
             >
-                <div style={{ fontSize: size * 0.32 }}>{card.rank.display}</div>
-                <div style={{ fontSize: size * 0.23, marginTop: -2 }}>{card.suit.symbol}</div>
+                <div style={{ fontSize: size * 0.32 }}>{displayRank}</div>
+                <div style={{ fontSize: size * 0.23, marginTop: -2 }}>{displaySuit}</div>
             </div>
             {/* Corner: bottom-right (flipped) */}
             <div
@@ -93,8 +105,8 @@ export default function PlayingCardView({ card, style = {}, size = 90 }) {
                     lineHeight: "1",
                 }}
             >
-                <div style={{ fontSize: size * 0.32 }}>{card.rank.display}</div>
-                <div style={{ fontSize: size * 0.23, marginTop: -2 }}>{card.suit.symbol}</div>
+                <div style={{ fontSize: size * 0.32 }}>{displayRank}</div>
+                <div style={{ fontSize: size * 0.23, marginTop: -2 }}>{displaySuit}</div>
             </div>
             {/* Center suit large */}
             <div
@@ -107,9 +119,10 @@ export default function PlayingCardView({ card, style = {}, size = 90 }) {
                     opacity: 0.23,
                     fontSize: size * 1.1,
                     userSelect: "none",
+                    pointerEvents: "none",
                 }}
             >
-                {card.suit.symbol}
+                {displaySuit}
             </div>
         </div>
     );
