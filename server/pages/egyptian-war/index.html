@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Egyptian WAR</title>
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+</head>
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        background-image: url('images/background.png');
+        background-size: cover; /* Fill the background */
+        background-position: center; /* Center the image */
+        background-repeat: no-repeat; /* Prevent tiling */
+        background-attachment: fixed; /* keep background fixed on scroll */
+    }
+
+    .center-container {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: none;
+    }
+
+    .title {
+        color: #fff;
+        font-size: 4rem;
+        text-shadow: 2px 2px 10px #222;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .label {
+        color: #fff;
+        font-size: 1.3rem;
+        margin-bottom: 0.7rem;
+        text-align: center;
+    }
+
+    .input {
+        padding: 1rem;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+        border: none;
+        width: 250px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    .button {
+        padding: 0.9rem 2.2rem;
+        font-size: 1.1rem;
+        border-radius: 0.5rem;
+        border: none;
+        background-color: #1179b6;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.2s;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+    }
+
+    .button:hover {
+        background-color: #0a4f6e;
+    }
+</style>
+<body>
+<div class="center-container">
+    <h1 class="title">EGYPTIAN WAR</h1>
+    <label class="label" for="displayName">Enter your name:</label>
+    <input id="displayName" type="text" class="input" placeholder="What should we call you?"/>
+    <button id="startGameBtn" class="button">Host Game</button>
+</div>
+</body>
+<script>
+    document.getElementById('startGameBtn').onclick = function () {
+        const displayName = document.getElementById('displayName').value.trim();
+        console.log(displayName);
+        if (displayName.length === 0) return;
+        window.location.href = '/egyptian-war/lobby/';
+    };
+    document.getElementById('displayName').onkeypress = function (e) {
+        if (e.key === "Enter") {
+            document.getElementById('startGameBtn').click();
+        }
+    }
+</script>
+<script>
+    // TODO: check if the user already is part of a game, if so, then redirect to the game page of the lobby
+</script>
+
+</html>

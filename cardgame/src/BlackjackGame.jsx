@@ -285,18 +285,18 @@ export default function BlackjackGame({ onBack }) {
                 {/* Dealer */}
                 <div>
                     <div style={{ fontWeight: "bold" }}>Dealer {state.dealerReveals || state.isGameOver ? `(Value: ${state.dealerHand.value()})` : "(Value: ?)"}</div>
-                    <div style={{ fontSize: 32, minHeight: 50 }}>
+                    <div style={{ display: "flex", gap: 10, margin: "auto" }}>
                         {state.dealerHand.cards.map((c, i) => (
-                            <span key={c.id || i} style={{ marginRight: 8 }}>{cardDisplay(c)}</span>
+                            <PlayingCardView key={c.id || i} card={c} size={72} />
                         ))}
                     </div>
                 </div>
                 {/* Player */}
                 <div>
                     <div style={{ fontWeight: "bold" }}>You (Value: {state.playerHand.value()})</div>
-                    <div style={{ fontSize: 32, minHeight: 50 }}>
-                        {state.playerHand.cards.map((c, i) => (
-                            <span key={c.id || i} style={{ marginRight: 8 }}>{cardDisplay(c)}</span>
+                    <div style={{ display: "flex", gap: 10, margin: "auto" }}>
+                        {state.dealerHand.cards.map((c, i) => (
+                            <PlayingCardView key={c.id || i} card={c} size={72} />
                         ))}
                     </div>
                 </div>
