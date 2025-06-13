@@ -1,5 +1,5 @@
 import React, { useEffect, useReducer } from "react";
-import { createDeck, createHand } from "./cardGamesModels";
+import { createDeck, createHand } from "./cardGamesModels.js";
 import PlayingCardView from "./PlayingCardView.jsx";
 
 // --- Chip denominations/colors (for display) ---
