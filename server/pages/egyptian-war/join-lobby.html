@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Egyptian WAR - Join Lobby</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-title {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        /* Name Entry Screen Styles */
+        .name-entry-screen {
+            display: block;
+        }
+
+        .name-input-container {
+            margin-bottom: 30px;
+        }
+
+        .name-input {
+            width: 100%;
+            max-width: 300px;
+            padding: 15px 20px;
+            border: 2px solid #3498db;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .name-input:focus {
+            border-color: #2980b9;
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .join-btn {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+            margin-top: 20px;
+        }
+
+        .join-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        .join-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Lobby Screen Styles */
+        .lobby-screen {
+            display: none;
+        }
+
+        .username-display {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .players-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .players-list {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .player-item {
+            background: white;
+            padding: 12px 20px;
+            margin: 5px 0;
+            border-radius: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+        }
+
+        .player-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .player-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .player-status {
+            background: #27ae60;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .no-players {
+            color: #7f8c8d;
+            font-style: italic;
+            font-size: 1.1rem;
+        }
+
+        .waiting-message {
+            background: #f39c12;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        .leave-btn {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(149, 165, 166, 0.3);
+        }
+
+        .leave-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(149, 165, 166, 0.4);
+        }
+
+        .error-message {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+
+            .game-title {
+                font-size: 2rem;
+            }
+
+            .join-btn, .leave-btn {
+                width: 100%;
+                max-width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Name Entry Screen -->
+    <div class="name-entry-screen" id="nameEntryScreen">
+        <h1 class="game-title">Egyptian WAR</h1>
+        <p class="subtitle">Join Game Lobby</p>
+
+        <div class="name-input-container">
+            <input type="text" class="name-input" id="playerNameInput" placeholder="Enter your name" maxlength="20">
+        </div>
+
+        <button class="join-btn" id="joinLobbyBtn" onclick="joinLobby()">
+            🎮 Join Lobby
+        </button>
+
+        <div id="errorMessage" style="display: none;"></div>
+    </div>
+
+    <!-- Lobby Screen -->
+    <div class="lobby-screen" id="lobbyScreen">
+        <h1 class="game-title">Egyptian WAR</h1>
+        <p class="subtitle">Game Lobby</p>
+
+        <div class="username-display" id="usernameDisplay">
+            Welcome, Player!
+        </div>
+
+        <div class="players-section">
+            <h3 class="section-title">Players in Lobby</h3>
+            <div class="players-list" id="playersList">
+                <div class="no-players">Loading players...</div>
+            </div>
+        </div>
+
+        <div class="waiting-message">
+            ⏳ Waiting for host to start the game...
+        </div>
+
+        <button class="leave-btn" onclick="leaveLobby()">
+            🚪 Leave Lobby
+        </button>
+    </div>
+</div>
+
+<script>
+    let ws = null;
+    let lobbyId = null;
+    let playerName = null;
+    let players = [];
+
+    // Extract lobby ID from URL
+    function getLobbyIdFromUrl() {
+        const path = window.location.pathname;
+        const match = path.match(/\/join\/(\d+)/);
+        return match ? match[1] : null;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        lobbyId = getLobbyIdFromUrl();
+        if (!lobbyId) {
+            showError('Invalid lobby URL');
+            return;
+        }
+
+        // Enable join button when name is entered
+        const nameInput = document.getElementById('playerNameInput');
+        const joinBtn = document.getElementById('joinLobbyBtn');
+
+        nameInput.addEventListener('input', function() {
+            joinBtn.disabled = this.value.trim().length === 0;
+        });
+
+        // Allow Enter key to join
+        nameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && this.value.trim().length > 0) {
+                joinLobby();
+            }
+        });
+
+        joinBtn.disabled = true;
+    });
+
+    function joinLobby() {
+        const nameInput = document.getElementById('playerNameInput');
+        playerName = nameInput.value.trim();
+
+        if (!playerName) {
+            showError('Please enter your name');
+            return;
+        }
+
+        if (!lobbyId) {
+            showError('Invalid lobby ID');
+            return;
+        }
+
+        // Disable the join button and show loading
+        const joinBtn = document.getElementById('joinLobbyBtn');
+        joinBtn.disabled = true;
+        joinBtn.textContent = '🔄 Joining...';
+
+        // Connect to WebSocket
+        connectToLobby();
+    }
+
+    function connectToLobby() {
+        console.log(`Connecting to lobby ${lobbyId} as ${playerName}`);
+
+        ws = new WebSocket(`ws://${window.location.host}/join-lobby`);
+
+        ws.onopen = function() {
+            console.log('WebSocket connected');
+            // Send join lobby request
+            ws.send(JSON.stringify({
+                lobbyId: lobbyId,
+                displayName: playerName
+            }));
+        };
+
+        ws.onmessage = function(event) {
+            const response = JSON.parse(event.data);
+            console.log('Server response:', response);
+
+            if (response.type === 'error') {
+                showError(response.message);
+                resetJoinButton();
+            } else if (response.type === 'player_joined') {
+                // Successfully joined - switch to lobby screen
+                showLobbyScreen();
+                players = response.players || [];
+                updatePlayersList();
+            }
+        };
+
+        ws.onclose = function() {
+            console.log('WebSocket disconnected');
+            if (document.getElementById('lobbyScreen').style.display !== 'none') {
+                showError('Connection lost. Please try rejoining.');
+            }
+        };
+
+        ws.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            showError('Connection failed. Please try again.');
+            resetJoinButton();
+        };
+    }
+
+    function showLobbyScreen() {
+        document.getElementById('nameEntryScreen').style.display = 'none';
+        document.getElementById('lobbyScreen').style.display = 'block';
+        document.getElementById('usernameDisplay').textContent = `Welcome, ${playerName}!`;
+    }
+
+    function showError(message) {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 5000);
+    }
+
+    function resetJoinButton() {
+        const joinBtn = document.getElementById('joinLobbyBtn');
+        joinBtn.disabled = false;
+        joinBtn.textContent = '🎮 Join Lobby';
+    }
+
+    function updatePlayersList() {
+        const playersList = document.getElementById('playersList');
+
+        if (players.length === 0) {
+            playersList.innerHTML = '<div class="no-players">No players in lobby...</div>';
+        } else {
+            playersList.innerHTML = players.map(player => `
+                    <div class="player-item">
+                        <span class="player-name">${player.display_name}</span>
+                        <span class="player-status">Ready</span>
+                    </div>
+                `).join('');
+        }
+    }
+
+    function leaveLobby() {
+        if (confirm('Are you sure you want to leave the lobby?')) {
+            if (ws) {
+                ws.close();
+            }
+            window.location.href = '/';
+        }
+    }
+</script>
+</body>
+</html>

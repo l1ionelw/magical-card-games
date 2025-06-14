@@ -83,7 +83,7 @@
         const displayName = document.getElementById('displayName').value.trim();
         console.log(displayName);
         if (displayName.length === 0) return;
-        window.location.href = '/egyptian-war/lobby/';
+        window.location.href = '/egyptian-war/lobby?name=' + displayName;
     };
     document.getElementById('displayName').onkeypress = function (e) {
         if (e.key === "Enter") {
@@ -92,7 +92,6 @@
     }
 </script>
 <script>
-    // TODO: check if the user already is part of a game, if so, then redirect to the game page of the lobby
 </script>
 
 </html>

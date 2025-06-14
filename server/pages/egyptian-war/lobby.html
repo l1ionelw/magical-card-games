@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Egyptian WAR - Lobby</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .lobby-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-title {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .lobby-subtitle {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        .username-display {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .players-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .players-list {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .player-item {
+            background: white;
+            padding: 12px 20px;
+            margin: 5px 0;
+            border-radius: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+        }
+
+        .player-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .player-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .player-status {
+            background: #27ae60;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .no-players {
+            color: #7f8c8d;
+            font-style: italic;
+            font-size: 1.1rem;
+        }
+
+        .join-section {
+            margin-bottom: 30px;
+        }
+
+        .join-link-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .join-link {
+            background: white;
+            border: 2px dashed #3498db;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            color: #2c3e50;
+            font-size: 0.9rem;
+            word-break: break-all;
+            margin-bottom: 15px;
+        }
+
+        .copy-button {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .copy-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .game-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .start-game-btn {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .start-game-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        .start-game-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .leave-btn {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(149, 165, 166, 0.3);
+        }
+
+        .leave-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(149, 165, 166, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .lobby-container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+            
+            .game-title {
+                font-size: 2rem;
+            }
+            
+            .game-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .start-game-btn, .leave-btn {
+                width: 100%;
+                max-width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="lobby-container">
+        <h1 class="game-title">Egyptian WAR</h1>
+        <p class="lobby-subtitle">Game Lobby</p>
+        
+        <div class="username-display" id="usernameDisplay">
+            Welcome, Player!
+        </div>
+
+        <div class="players-section">
+            <h3 class="section-title">Players in Lobby</h3>
+            <div class="players-list" id="playersList">
+                <div class="no-players">Waiting for players to join...</div>
+            </div>
+        </div>
+
+        <div class="join-section">
+            <h3 class="section-title">Invite Friends</h3>
+            <div class="join-link-container">
+                <div class="join-link" id="joinLink">
+                    https://your-game-url.com/join?lobby=ABC123
+                </div>
+                <button class="copy-button" onclick="copyJoinLink()">
+                    📋 Copy Link
+                </button>
+            </div>
+        </div>
+
+        <div class="game-controls">
+            <button class="start-game-btn" id="startGameBtn" disabled onclick="startGame()">
+                🎮 Start Game
+            </button>
+            <button class="leave-btn" onclick="leaveLobby()">
+                🚪 Leave Lobby
+            </button>
+        </div>
+    </div>
+
+    <script>
+        console.log("in the lobby! getting username from url params");
+        // split url by = sign
+        const url = window.location.href.split("=");
+        const username = url[1] || "Player";
+        console.log(username);
+        const newUrl = url[0].split("?")[0];
+        console.log(newUrl);
+
+        console.log("domain: " + window.location.host)
+        // history.pushState({}, null, newUrl);
+        
+        // Update username display
+        if (newUrl && newUrl !== 'Player') {
+            document.getElementById('usernameDisplay').textContent = `Welcome, ${username}!`;
+        }
+        
+        // Mock player data - replace with real WebSocket data
+        let players = [
+            { name: username, status: 'Ready' }
+        ];
+
+        // start websocket action
+        console.log("connecting to websocket");
+        // start a websocket connection with {operation: "NEW_GAME"}
+        const ws = new WebSocket(`ws://${window.location.host}/create-lobby`);
+
+        ws.onopen = function() {
+            console.log('WebSocket connected');
+            // Send create lobby action with username
+            ws.send(JSON.stringify({
+                action: 'create_lobby',
+                display_name: username
+            }));
+        };
+
+        ws.onmessage = function(event) {
+            const response = JSON.parse(event.data);
+            console.log('Server response:', response);
+
+            if (response.type === 'lobby_created') {
+                // Update join link with the actual lobby ID
+                document.getElementById('joinLink').textContent = `${window.location.origin}/egyptian-war${response.join_link}`;
+            }
+            if (response.type === 'player_joined') {
+                players.push({ name: response.playerDisplayName, status: 'duma' });
+                updatePlayersList();
+            }
+        };
+
+        ws.onclose = function() {
+            console.log('WebSocket disconnected');
+        };
+
+        ws.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+
+        // utility functions ---------------------------------
+
+        function updatePlayersList() {
+            const playersList = document.getElementById('playersList');
+            
+            if (players.length === 0) {
+                playersList.innerHTML = '<div class="no-players">Waiting for players to join...</div>';
+            } else {
+                playersList.innerHTML = players.map(player => `
+                    <div class="player-item">
+                        <span class="player-name">${player.name}</span>
+                        <span class="player-status">${player.status}</span>
+                    </div>
+                `).join('');
+            }
+            
+            // Enable start button if there are at least 2 players
+            const startBtn = document.getElementById('startGameBtn');
+            startBtn.disabled = players.length < 2;
+        }
+        
+        function copyJoinLink() {
+            const joinLink = document.getElementById('joinLink').textContent;
+            navigator.clipboard.writeText(joinLink).then(() => {
+                const button = document.querySelector('.copy-button');
+                const originalText = button.textContent;
+                button.textContent = '✅ Copied!';
+                button.style.background = 'linear-gradient(45deg, #27ae60, #2ecc71)';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = 'linear-gradient(45deg, #e74c3c, #c0392b)';
+                }, 2000);
+            }).catch(() => {
+                alert('Failed to copy link. Please copy manually.');
+            });
+        }
+        
+        function startGame() {
+            alert('Starting game... (placeholder)');
+            // TODO: Implement game start logic
+        }
+        
+        function leaveLobby() {
+            if (confirm('Are you sure you want to leave the lobby?')) {
+                window.location.href = '/'; // or wherever you want to redirect
+            }
+        }
+        
+        // Initialize the players list
+        updatePlayersList();
+        
+        // TODO: Replace with actual WebSocket connection
+        // get the username from url, then push state to change the url to not have the username
+        // start a websocket connection to tell server to create a new lobby
+        // listen for server updates
+        
+        // Mock adding a player after 3 seconds (for demonstration)
+        // setTimeout(() => {
+        //     players.push({ name: 'TestPlayer2', status: 'Ready' });
+        //     updatePlayersList();
+        // }, 3000);
+    </script>
+</body>
+</html>
