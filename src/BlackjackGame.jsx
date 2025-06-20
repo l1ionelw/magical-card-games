@@ -1,7 +1,7 @@
-import React, { useEffect, useReducer, useRef, useState } from "react";
+import React, { useEffect, useReducer } from "react";
 import { createDeck, createHand } from "./cardGamesModels";
 import PlayingCardView from "./PlayingCardView.jsx";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 const CHIP_DENOMS = [
     { value: 100, color: "#222" },
@@ -37,20 +37,7 @@ const initialState = {
     chipDelta: 0,
     showChipDelta: false,
     confetti: false,
-    dealAnimQueue: [], // cards to deal for animation, each {to: "player"|"dealer", faceUp: bool}
-    dealing: false,
-    shuffled: false,
-    shuffleAnim: false,
 };
-
-function getInitialDealQueue() {
-    return [
-        { to: "player", faceUp: true },
-        { to: "dealer", faceUp: false },
-        { to: "player", faceUp: true },
-        { to: "dealer", faceUp: true }
-    ];
-}
 
 function reducer(state, action) {
     switch (action.type) {
@@ -69,79 +56,44 @@ function reducer(state, action) {
                 playerChips: state.playerChips - action.amount,
                 betPlaced: true,
                 error: "",
-                shuffled: false,
-                shuffleAnim: true,
             };
-        case "SHUFFLE_DONE":
+        case "DEAL": {
+            const deck = createDeck();
+            const playerCards = [deck.draw(true), deck.draw(true)];
+            const dealerCards = [deck.draw(false), deck.draw(true)];
+            const playerHand = createHand(playerCards);
+            const dealerHand = createHand(dealerCards);
+            let allowedToDouble =
+                playerHand.cards.length === 2 &&
+                state.playerChips >= state.playerBet &&
+                !playerHand.isBlackjack();
             return {
                 ...state,
-                shuffled: true,
-                shuffleAnim: false,
-                dealAnimQueue: getInitialDealQueue(),
-                dealing: true,
-                deck: createDeck(),
-                playerHand: createHand([]),
-                dealerHand: createHand([]),
-                isPlayerTurn: false,
+                deck,
+                playerHand,
+                dealerHand,
+                isPlayerTurn: true,
                 isGameOver: false,
                 dealerReveals: false,
                 blackjackResult: "",
-                allowedToDouble: false,
+                allowedToDouble,
                 showChipDelta: false,
                 chipDelta: 0,
                 confetti: false,
             };
-        case "DEAL_ANIM_CARD": {
-            if (!state.dealAnimQueue.length || !state.deck) return state;
-            const [next, ...rest] = state.dealAnimQueue;
-            const card = state.deck.draw(next.faceUp);
-            let playerHand = state.playerHand;
-            let dealerHand = state.dealerHand;
-
-            if (next.to === "player") playerHand = createHand([...playerHand.cards, card]);
-            if (next.to === "dealer") dealerHand = createHand([...dealerHand.cards, card]);
-
-            let dealing = rest.length > 0;
-            let allowedToDouble = false, isPlayerTurn = false;
-            if (!dealing) {
-                allowedToDouble =
-                    playerHand.cards.length === 2 &&
-                    state.playerChips >= state.playerBet &&
-                    !playerHand.isBlackjack();
-                isPlayerTurn = true;
-            }
-
-            return {
-                ...state,
-                deck: state.deck,
-                playerHand,
-                dealerHand,
-                dealAnimQueue: rest,
-                dealing,
-                allowedToDouble,
-                isPlayerTurn,
-            };
         }
         case "PLAYER_HIT":
             if (!state.isPlayerTurn || state.isGameOver) return state;
-            return {
-                ...state,
-                dealAnimQueue: [{ to: "player", faceUp: true }],
-                dealing: true,
-                allowedToDouble: false,
-            };
-        case "PLAYER_HIT_COMPLETE":
-            const card = state.deck._lastDealtCard; // see below for _lastDealtCard
+            const card = state.deck.draw(true);
             const newPlayerHand = createHand([...state.playerHand.cards, card]);
             let bust = newPlayerHand.isBusted();
             return {
                 ...state,
                 playerHand: newPlayerHand,
+                allowedToDouble: false,
                 isPlayerTurn: !bust,
                 isGameOver: bust,
                 blackjackResult: bust ? "You busted! Dealer wins." : "",
-                dealing: false,
-                allowedToDouble: false,
             };
         case "PLAYER_STAND":
             return {
@@ -156,30 +108,20 @@ function reducer(state, action) {
                 state.playerChips < state.playerBet
             )
                 return state;
+            const doubleCard = state.deck.draw(true);
+            const handAfterDouble = createHand([...state.playerHand.cards, doubleCard]);
+            const busted = handAfterDouble.isBusted();
             return {
                 ...state,
+                playerHand: handAfterDouble,
                 playerChips: state.playerChips - state.playerBet,
                 playerBet: state.playerBet * 2,
                 allowedToDouble: false,
-                dealAnimQueue: [{ to: "player", faceUp: true }],
-                dealing: true,
-                _double: true,
-            };
-        case "PLAYER_DOUBLE_COMPLETE": {
-            const card = state.deck._lastDealtCard;
-            const newPlayerHand = createHand([...state.playerHand.cards, card]);
-            const busted = newPlayerHand.isBusted();
-            return {
-                ...state,
-                playerHand: newPlayerHand,
                 isPlayerTurn: false,
                 dealerReveals: !busted,
                 isGameOver: busted,
                 blackjackResult: busted ? "You busted! Dealer wins." : "",
-                dealing: false,
-                _double: false,
             };
-        }
         case "DEALER_PLAY":
             state.dealerHand.cards[0].isFaceUp = true;
             let dHand = createHand([...state.dealerHand.cards]);
@@ -255,67 +197,14 @@ function reducer(state, action) {
     }
 }
 
-// Patch for deck to track last card drawn for animation finish
-function patchDeck(deck) {
-    const origDraw = deck.draw;
-    deck._lastDealtCard = null;
-    deck.draw = function (faceUp = true) {
-        const card = origDraw.call(deck, faceUp);
-        if (card) deck._lastDealtCard = card;
-        return card;
-    };
-    return deck;
-}
-
 export default function BlackjackGame({ onBack }) {
     const [state, dispatch] = useReducer(reducer, initialState);
-    const [readyToDeal, setReadyToDeal] = useState(false);
-    const [animCard, setAnimCard] = useState(null);
-    const [animDest, setAnimDest] = useState(null);
 
     useEffect(() => {
-        if (state.betPlaced && !state.shuffled) {
-            setTimeout(() => {
-                dispatch({ type: "SHUFFLE_DONE" });
-            }, 1200);
+        if (state.betPlaced) {
+            dispatch({ type: "DEAL" });
         }
-    }, [state.betPlaced, state.shuffled]);
-
-    useEffect(() => {
-        if (state.dealAnimQueue.length && state.dealing && state.deck) {
-            setTimeout(() => {
-                // Animate card moving from deck to hand
-                const next = state.dealAnimQueue[0];
-                setAnimCard({ ...state.deck.cards[0], isFaceUp: next.faceUp });
-                setAnimDest(next.to);
-                setTimeout(() => {
-                    dispatch({ type: "DEAL_ANIM_CARD" });
-                    setAnimCard(null);
-                    setAnimDest(null);
-                }, 400);
-            }, 350);
-        } else if (
-            state.dealing &&
-            !state.dealAnimQueue.length &&
-            state.playerHand &&
-            state.dealerHand
-        ) {
-            if (state._double) {
-                setTimeout(() => dispatch({ type: "PLAYER_DOUBLE_COMPLETE" }), 300);
-            } else if (!state.isPlayerTurn && !state.isGameOver) {
-                setTimeout(() => dispatch({ type: "PLAYER_HIT_COMPLETE" }), 300);
-            }
-        }
-    }, [
-        state.dealAnimQueue,
-        state.dealing,
-        state.deck,
-        state.playerHand,
-        state.dealerHand,
-        state._double,
-        state.isPlayerTurn,
-        state.isGameOver,
-    ]);
+    }, [state.betPlaced]);
 
     useEffect(() => {
         if (state.dealerReveals && !state.isGameOver) {
@@ -326,112 +215,21 @@ export default function BlackjackGame({ onBack }) {
                 }, 1100);
             }, 700);
         }
-    }, [state.dealerReveals, state.isGameOver]);
+    }, [state.dealerReveals]);
 
     function handleBet(amount) {
         dispatch({ type: "SET_BET", amount });
     }
 
-    // Patch the deck on initial shuffle for tracking last card for animation
-    useEffect(() => {
-        if (state.deck && !state.deck._lastDealtPatched) {
-            patchDeck(state.deck);
-            state.deck._lastDealtPatched = true;
-        }
-    }, [state.deck]);
-
-    // Deck stack visual
-    function renderDeckStack() {
-        if (!state.deck) return null;
-        const count = state.deck.cards.length;
-        if (count === 0) return null;
-        return (
-            <div style={{ position: "absolute", left: 30, top: 120, zIndex: 40 }}>
-                {[...Array(Math.min(count, 8))].map((_, i) => (
-                    <div
-                        key={i}
-                        style={{
-                            position: "absolute",
-                            left: i * 2,
-                            top: i * 1.5,
-                            zIndex: i,
-                            opacity: 1 - i * 0.09,
-                        }}
-                    >
-                        <PlayingCardView card={{ isFaceUp: false }} size={72} />
-                    </div>
-                ))}
-            </div>
-        );
-    }
-
-    // Shuffling animation
-    function renderShuffleAnim() {
-        return (
-            <div
-                style={{
-                    position: "absolute",
-                    left: 30,
-                    top: 120,
-                    zIndex: 99,
-                    width: 72,
-                    height: 100,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}
-            >
-                <motion.div
-                    initial={{ rotate: 0 }}
-                    animate={{ rotate: [0, 18, -18, 12, -12, 0] }}
-                    transition={{ repeat: 4, duration: 1.2 }}
-                    style={{
-                        width: 72,
-                        height: 100,
-                        borderRadius: 9,
-                        boxShadow: "0 4px 18px #0007",
-                        background: "linear-gradient(135deg, #2a2948 70%, #456 100%)",
-                        border: "2.2px solid #222",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
-                    <span style={{ fontSize: 48, color: "#fff", opacity: 0.97 }}>🂠</span>
-                </motion.div>
-            </div>
-        );
-    }
-
-    // Flying card animation
-    function renderDealingAnim() {
-        if (!animCard || !animDest) return null;
-        let dest = { left: 0, top: 0 };
-        if (animDest === "player") dest = { left: 150, top: 320 };
-        if (animDest === "dealer") dest = { left: 150, top: 60 };
-        return (
-            <motion.div
-                initial={{ left: 30, top: 120, position: "absolute", zIndex: 100 }}
-                animate={{ left: dest.left, top: dest.top }}
-                transition={{ duration: 0.38, ease: "easeInOut" }}
-                style={{ position: "absolute", zIndex: 100, pointerEvents: "none" }}
-            >
-                <PlayingCardView card={animCard} size={72} />
-            </motion.div>
-        );
-    }
-
     return (
-        <div className="bj-root" style={{ color: "#fff", minHeight: 500, maxWidth: 480, margin: "0 auto", padding: 18, position: "relative" }}>
+        <div className="bj-root" style={{ color: "#fff", minHeight: 500, maxWidth: 480, margin: "0 auto", padding: 18 }}>
             <h2 style={{ fontWeight: "bold", fontSize: 36, marginBottom: 8 }}>
                 Blackjack
             </h2>
             <button className="cg-btn" style={{ marginBottom: 10 }} onClick={onBack}>
                 Back to Home
             </button>
-            <div style={{ margin: "12px 0", fontWeight: "bold", fontSize: 18 }}>
-                Chips: ${state.playerChips}
-            </div>
+            <div style={{ margin: "12px 0", fontWeight: "bold", fontSize: 18 }}>Chips: ${state.playerChips}</div>
             {state.playerChips <= 0 ? (
                 <div style={{ color: "#ff5757", fontWeight: "bold", fontSize: 28 }}>
                     Out of chips! <br />
@@ -453,7 +251,7 @@ export default function BlackjackGame({ onBack }) {
                             className="cg-btn"
                             style={{
                                 marginRight: 14,
-                                background: state.playerChips < amt ? "#777" : CHIP_DENOMS.find((c) => c.value === amt)?.color,
+                                background: state.playerChips < amt ? "#777" : "#333",
                                 color: "#fff",
                                 opacity: state.playerChips < amt ? 0.5 : 1,
                             }}
@@ -465,15 +263,26 @@ export default function BlackjackGame({ onBack }) {
                     ))}
                 </div>
             )}
-            {state.shuffleAnim && renderShuffleAnim()}
-            {renderDeckStack()}
-            {renderDealingAnim()}
-            <div className="bj-hands" style={{ display: "flex", flexDirection: "column", gap: 30, marginTop: 10 }}>
+
+            <div className="bj-hands" style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 40, // Increased spacing between dealer and player sections
+                marginTop: 10
+            }}>
                 <div>
-                    <div style={{ fontWeight: "bold" }}>
+                    <div style={{
+                        fontWeight: "bold",
+                        marginBottom: 16, // Space between value and dealer cards
+                        fontSize: 18,
+                    }}>
                         Dealer {state.dealerReveals || state.isGameOver ? `(Value: ${state.dealerHand?.value()})` : "(Value: ?)"}
                     </div>
-                    <div style={{ display: "flex", gap: 10, minHeight: 110, margin: "auto" }}>
+                    <div style={{
+                        display: "flex",
+                        gap: 14,
+                        margin: "auto"
+                    }}>
                         {state.dealerHand?.cards.map((c, i) => (
                             <motion.div
                                 key={c.id || i}
@@ -487,10 +296,18 @@ export default function BlackjackGame({ onBack }) {
                     </div>
                 </div>
                 <div>
-                    <div style={{ fontWeight: "bold" }}>
+                    <div style={{
+                        fontWeight: "bold",
+                        marginBottom: 16, // Space between value and player cards
+                        fontSize: 18,
+                    }}>
                         You (Value: {state.playerHand?.value()})
                     </div>
-                    <div style={{ display: "flex", gap: 10, minHeight: 110, margin: "auto" }}>
+                    <div style={{
+                        display: "flex",
+                        gap: 14,
+                        margin: "auto"
+                    }}>
                         {state.playerHand?.cards.map((c, i) => (
                             <motion.div
                                 key={c.id || i}
@@ -504,7 +321,8 @@ export default function BlackjackGame({ onBack }) {
                     </div>
                 </div>
             </div>
-            {state.betPlaced && !state.isGameOver && !state.dealing && (
+
+            {state.betPlaced && !state.isGameOver && (
                 <div style={{ marginTop: 20 }}>
                     <button
                         className="cg-btn"
