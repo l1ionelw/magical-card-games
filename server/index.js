@@ -120,6 +120,8 @@ app.ws('/create-lobby', (ws, req) => {
 });
 app.ws('/join-lobby', (ws, req) => {
     const userIP = getUserIP(req);
+    let displayName = "";
+    let lobbyId = -1;
     console.log("user of ip: " + userIP + " wants to join lobby");
     ws.on('message', (message) => {
         // {lobbyId: "5", displayName: "example player"}
@@ -141,6 +143,9 @@ app.ws('/join-lobby', (ws, req) => {
             return;
         }
 
+        displayName = joinInfo.displayName;
+        lobbyId = joinInfo.lobbyId;
+
         lobby.players.push({
             display_name: joinInfo.displayName,
             ip: userIP,
@@ -155,8 +160,50 @@ app.ws('/join-lobby', (ws, req) => {
                 players: lobby.players.map(p => ({display_name: p.display_name}))
             }));
         });
+        ws.on("close", () => {
+            console.log("he left the lobby");
+            console.log(lobbyId);
+            console.log("lobby before");
+            console.log(lobby);
+            lobby.players = lobby.players.filter(player => player.display_name !== displayName)
+            console.log("new lobby:");
+            console.log(lobby);
+            console.log(`Removed player '${displayName}' from lobby ${lobbyId}`);
+
+            lobby.players.forEach(player => {
+            player.websocket.send(JSON.stringify({
+                type: 'player_left',
+                playerDisplayName: joinInfo.displayName,
+                players: lobby.players
+            }));
+        });
+
+        })
     })
-})
+});
+app.ws('/start-game', (ws, req) => {
+    const ip = getUserIP(req);
+    console.log(ip);
+    console.log("starting game for lobby: ");
+    ws.on('message', (message) => {
+        // {lobbyId: "2"}
+        const lobbyDetails = JSON.parse(message);
+        console.log(lobbyDetails);
+        if (!lobbyDetails || !lobbyDetails.lobbyId) {
+            ws.send(JSON.stringify({type: 'error', message: 'Request not valid'}));
+            return;
+        }
+        // send ws to everyone to start game 
+        const lobby = lobbies.find(lobby=>lobby.id == lobbyDetails.lobbyId);
+        console.log("lobby to start: ");
+        console.log(lobby);
+        lobby.players.forEach(player => {
+            player.websocket.send(JSON.stringify({
+                type: 'start_game',
+            }));
+        });
+    });
+});
 
 // 404 handler
 app.use((req, res, next) => {

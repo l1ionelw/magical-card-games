@@ -362,6 +362,12 @@
                 showLobbyScreen();
                 players = response.players || [];
                 updatePlayersList();
+            } else if (response.type === 'player_left') {
+                // delete the player
+                players = players.filter(player => player.display_name !== response.playerDisplayName);
+                updatePlayersList();
+            } else if (response.type === "start_game") {
+                console.log("STARTING GAME");
             }
         };
 

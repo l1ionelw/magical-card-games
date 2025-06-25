@@ -271,6 +271,7 @@
     </div>
 
     <script>
+        let LOBBY_ID = -1;
         console.log("in the lobby! getting username from url params");
         // split url by = sign
         const url = window.location.href.split("=");
@@ -313,10 +314,18 @@
             if (response.type === 'lobby_created') {
                 // Update join link with the actual lobby ID
                 document.getElementById('joinLink').textContent = `${window.location.origin}/egyptian-war${response.join_link}`;
+                LOBBY_ID = response.lobby_id;
             }
             if (response.type === 'player_joined') {
                 players.push({ name: response.playerDisplayName, status: 'duma' });
                 updatePlayersList();
+            }
+            if (response.type === "player_left") {
+                players = players.filter(player => player.name !== response.playerDisplayName);
+                updatePlayersList();
+            }
+            if (response.type === "start_game") {
+                console.log("STARTING GAME!");
             }
         };
 
@@ -367,8 +376,20 @@
         }
         
         function startGame() {
-            alert('Starting game... (placeholder)');
-            // TODO: Implement game start logic
+            // alert('Starting game... (placeholder)');
+            console.log("starting game client side");
+            const tws = new WebSocket(`ws://${window.location.host}/start-game`);
+
+            tws.onopen = function() {
+                console.log('WebSocket connected');
+                tws.send(JSON.stringify({
+                    lobbyId: LOBBY_ID  
+                }));
+            };  
+            tws.onmessage = function(event) {
+            const response = JSON.parse(event.data);
+            console.log('Server response:', response);
+            }
         }
         
         function leaveLobby() {
