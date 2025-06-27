@@ -290,7 +290,7 @@
         
         // Mock player data - replace with real WebSocket data
         let players = [
-            { name: username, status: 'Ready' }
+            { name: username, status: 'Ready', display_name: username }
         ];
 
         // start websocket action
@@ -317,7 +317,7 @@
                 LOBBY_ID = response.lobby_id;
             }
             if (response.type === 'player_joined') {
-                players.push({ name: response.playerDisplayName, status: 'duma' });
+                players.push({ name: response.playerDisplayName, status: 'Ready', display_name: response.playerDisplayName });
                 updatePlayersList();
             }
             if (response.type === "player_left") {
@@ -326,6 +326,8 @@
             }
             if (response.type === "start_game") {
                 console.log("STARTING GAME!");
+                startGameHandler();
+                setupGameWebsockets();
             }
         };
 
@@ -386,10 +388,6 @@
                     lobbyId: LOBBY_ID  
                 }));
             };  
-            tws.onmessage = function(event) {
-            const response = JSON.parse(event.data);
-            console.log('Server response:', response);
-            }
         }
         
         function leaveLobby() {
@@ -412,5 +410,7 @@
         //     updatePlayersList();
         // }, 3000);
     </script>
+    <script src="startgamehandler.js"></script>
 </body>
+
 </html>

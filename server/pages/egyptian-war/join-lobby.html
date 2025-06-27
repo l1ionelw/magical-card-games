@@ -274,11 +274,14 @@
     </div>
 </div>
 
+
+
 <script>
     let ws = null;
     let lobbyId = null;
     let playerName = null;
     let players = [];
+    let username = null;
 
     // Extract lobby ID from URL
     function getLobbyIdFromUrl() {
@@ -286,6 +289,7 @@
         const match = path.match(/\/join\/(\d+)/);
         return match ? match[1] : null;
     }
+    let LOBBY_ID = getLobbyIdFromUrl();
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
@@ -315,9 +319,9 @@
 
     function joinLobby() {
         const nameInput = document.getElementById('playerNameInput');
-        playerName = nameInput.value.trim();
+        username = nameInput.value.trim();
 
-        if (!playerName) {
+        if (!username) {
             showError('Please enter your name');
             return;
         }
@@ -337,7 +341,7 @@
     }
 
     function connectToLobby() {
-        console.log(`Connecting to lobby ${lobbyId} as ${playerName}`);
+        console.log(`Connecting to lobby ${lobbyId} as ${username}`);
 
         ws = new WebSocket(`ws://${window.location.host}/join-lobby`);
 
@@ -346,7 +350,7 @@
             // Send join lobby request
             ws.send(JSON.stringify({
                 lobbyId: lobbyId,
-                displayName: playerName
+                displayName: username
             }));
         };
 
@@ -368,6 +372,8 @@
                 updatePlayersList();
             } else if (response.type === "start_game") {
                 console.log("STARTING GAME");
+                startGameHandler();
+                setupGameWebsockets();
             }
         };
 
@@ -388,7 +394,7 @@
     function showLobbyScreen() {
         document.getElementById('nameEntryScreen').style.display = 'none';
         document.getElementById('lobbyScreen').style.display = 'block';
-        document.getElementById('usernameDisplay').textContent = `Welcome, ${playerName}!`;
+        document.getElementById('usernameDisplay').textContent = `Welcome, ${username}!`;
     }
 
     function showError(message) {
@@ -432,5 +438,9 @@
         }
     }
 </script>
+
+<script src="/egyptian-war/startgamehandler.js"></script>
+
 </body>
+
 </html>
