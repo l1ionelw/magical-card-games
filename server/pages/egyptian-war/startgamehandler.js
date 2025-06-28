@@ -127,10 +127,18 @@ function startGameHandler() {
     console.log('USING THIS LOBBY ID: ' + LOBBY_ID);
     setupCanvasRenderer();
     initialRender();
+
+    // create keybinds
+    document.addEventListener('keydown', function (event) {
+        // Check if the 'q' key was pressed
+        if (event.key === 'q') document.getElementById('slam-btn').click()
+        if (event.key === 'w') document.getElementById('place-card-btn').click()
+    });
 }
 
 function updateCurrentTurn() {
     if (players.length === 0) return;
+    // if (special_card_curriter < special_card_maxiter) return;
 
     currentTurnIndex = (currentTurnIndex + 1) % players.length;
     const currentPlayer = players[currentTurnIndex];
@@ -138,7 +146,27 @@ function updateCurrentTurn() {
     console.log(`It's now ${currentPlayer.display_name}'s turn`);
     return currentPlayer;
 }
+function getCardMetadata(currentCard) {
+    const categoryPart = currentCard.split("_")[2];
+    const numberPart = !isNaN(parseInt(currentCard.split("_")[0])) ? parseInt(currentCard.split("_")[0]) : currentCard.split("_")[0];
+    const isNumber = !isNaN(parseInt(numberPart)); // true if it's a number card
+    let hitCount = 0;
+    if (!isNumber) {
+        if (numberPart === "jack") hitCount = 1;
+        if (numberPart === "king") hitCount = 3;
+        if (numberPart === "queen") hitCount = 2;
+        if (numberPart === "ace") hitCount = 4;
+    }
 
+    const card_metadata = {
+        number: numberPart,
+        type: isNumber ? "number" : "special", // "special" includes ace, jack, queen, king
+        category: categoryPart,
+        isNumber: isNumber,
+        hitCount: hitCount
+    };
+    return card_metadata;
+}
 function setupGameWebsockets() {
     console.log("infile - setup game websockets");
     /*
@@ -163,23 +191,26 @@ function setupGameWebsockets() {
             card_amounts = data.card_amounts;
             console.log("HERES THE DECK!!!");
             console.log(current_deck);
-            renderPlayers({renderNames: true});
+            renderPlayers({ renderNames: true });
         }
         if (data.action === "slam") {
-            /* 
-            default rules - 
-            - sandwich with first card or card in between
-            - normal sandwich
-            - if current card on deck is king, queen, or jack, check card count, then make player insert a card at the bottom
-            */
-           // is sandwich whole deck or sandwich last last card or equal to previous card?
-           if (data.card === current_deck_stack[0] || data.card === )
-
-           // check is special card?
-           if (special_card_curriter !== 0) { console.log("slammed while there's a special card!") }
-            renderPlayers({renderNames: true});
+            // get index of person who slammed so i can add to their counter
+            const indexOfSlammer = players.findIndex(player => player.display_name === data.display_name);
+            console.log("index of the slammer is: " + indexOfSlammer);
+            card_amounts[indexOfSlammer] += current_deck_stack.length;
+            if (data.display_name === username) {
+                // im the one who slammed, gonna take all cards and empty deck
+                while (current_deck_stack.length !== 0) {
+                    current_deck.push(current_deck_stack.pop());
+                }
+            } else {
+                // i didnt slam, so im just gonna empty card deck and update card amounts
+                current_deck_stack = [];
+            }
+            renderPlayers({ renderNames: true });
         }
         if (data.action === "place_card") {
+
             /*
             handle somsone else placed card
             get the card, and add it to card list 
@@ -190,39 +221,131 @@ function setupGameWebsockets() {
             - if inSpecialCardLock (special card maxiter is not 0), then process this request with those rules (check did they place special card, or num iters passed max iter)
             - if not, then process place card normal (alr done)
             */
+
             current_deck_stack.push(data.card);
             card_amounts[currentTurnIndex] -= 1;
+
+            // if is in lock, and put normal card
+            const card_metadata = getCardMetadata(data.card);
+            if (special_card_curriter < special_card_maxiter && card_metadata.type !== "special") {
+                console.log("was in lock, put normal card");
+                special_card_curriter++;
+                // check if its past its alloted iterations
+                if (special_card_curriter >= special_card_maxiter) {
+                    special_card_maxiter = 0;
+                    special_card_curriter = 0;
+                    // get previous guys name, put into display_name
+                    // TODO: fix this, the prev_player_index calc is wrong and websocket all players are sending to server
+                    const prev_player_index = currentTurnIndex === 0 ? players.length - 1 : currentTurnIndex - 1;
+                    console.log("lost this game, giving cards to: " + players[prev_player_index]);
+                    gameWs.send(JSON.stringify({ action: "slam", display_name:  players[prev_player_index]}));
+
+                    updateCurrentTurn();
+                }
+                renderPlayers({ renderNames: true, cardName: data.card });
+                return;
+            }
+            // if is in lock, and put special card, then change turn and update hit count
+            if (special_card_curriter < special_card_maxiter && card_metadata.type === "special") {
+                console.log("was in lock! now just put special card");
+                updateCurrentTurn();
+                special_card_maxiter = card_metadata.hitCount;
+                special_card_curriter = 0;
+                renderPlayers({ renderNames: true, cardName: data.card });  
+                return; 
+            }
+
+            // if wasn't special, but now is, update hit count and change turn
+            if (card_metadata.type === "special") {
+                console.log("wasn't special, now started being special: " + card_metadata.hitCount);
+                updateCurrentTurn();
+                special_card_maxiter = card_metadata.hitCount;
+                special_card_curriter = 0;
+                renderPlayers({ renderNames: true, cardName: data.card });
+                return;
+            }
+            
+            // if wasnt special, and still isn't then just update turn and render
+            console.log("wasn't special, still not");
             updateCurrentTurn();
-            renderPlayers({renderNames: true});
+            renderPlayers({ renderNames: true, cardName: data.card });
         }
     };
 }
 
 function handleSlam() {
+    let isSlamValid = false;
     console.log("slam pressed");
-    gameWs.send(JSON.stringify({ action: "slam" }));
+
+    const currentCard = current_deck_stack[current_deck_stack.length - 1];
+    const cur_metadata = getCardMetadata(currentCard);
+    console.log(cur_metadata);
+
+    /* 
+    default rules - 
+    - sandwich with first card or card in between
+    - normal sandwich
+    - if current card on deck is king, queen, or jack, check card count, then make player insert a card at the bottom
+    */
+    // is sandwich whole deck or sandwich last last card or equal to previous card?
+    // is sandwich whole deck
+    // has 3 or more cards, check cases: first ever vs current & first vs third (sandwich)
+    if (current_deck_stack.length >= 3) {
+        console.log("checking first ever");
+        // check first ever - full works
+        const firstCard = getCardMetadata(current_deck_stack[0]);
+        console.log(firstCard);
+        console.log(cur_metadata);
+        if (cur_metadata.number === firstCard.number) {
+            console.log("is valid");
+            isSlamValid = true;
+        }
+
+        // check sandwich
+        console.log("checking sandwich");
+        const thirdLastCard = getCardMetadata(current_deck_stack[current_deck_stack.length - 3]);
+        if (cur_metadata.number === thirdLastCard.number) {
+            console.log("is valid");
+            isSlamValid = true;
+        }
+    }
+    // now check 2 cards in consecutive 
+    if (current_deck_stack.length > 1) {
+        console.log("checking 2 cards consecutive");
+        const secondLastCard = getCardMetadata(current_deck_stack[current_deck_stack.length - 2]);
+        console.log(secondLastCard);
+        if (cur_metadata.number === secondLastCard.number) {
+            console.log("is valid");
+            isSlamValid = true;
+        }
+
+    }
+    console.log("is slam valid? " + isSlamValid);
+
+    // check is special card?
+    if (special_card_curriter !== 0) { console.log("slammed while there's a special card!") }
+
+    if (!isSlamValid) return;
+    // slam went through, gonna tell everyone now
+    gameWs.send(JSON.stringify({ action: "slam", display_name: username }));
 }
 
 function handlePlaceCard() {
-    console.log("place card pressed");
     // get index of my username
     let myIndex;
-    for (myIndex=0;myIndex<players.length; myIndex++) {
+    for (myIndex = 0; myIndex < players.length; myIndex++) {
         if (players[myIndex].display_name === username) {
             break;
         }
     }
-    console.log("current player index: ");
     if (currentTurnIndex !== myIndex) {
         console.log("is not my turn, will not place card");
         return;
     }
-    // place the card operation
-    console.log("placing card!");
     // pop from card deck and add to current deck
     const card = current_deck.pop();
     gameWs.send(JSON.stringify({ action: "place_card", card: card })); // only send, the ws handler will put on current card deck
-    
+
 }
 
 function handleLeaveGame() {
@@ -244,7 +367,11 @@ function initialRender() {
     renderPlayers();
 }
 
-function renderPlayers({ renderNames = true } = {}) {
+
+function renderPlayers({ renderNames = true, cardName = "" } = {}) {
+    renderCardPlaced(cardName, () => renderUI({ renderNames: renderNames }));
+}
+function renderUI({ renderNames = true }) {
     players.forEach((player, index) => {
         const yPosition = (canvas.height * 0.5) + (index * 40);
         const circleX = canvas.width * 0.1;
@@ -254,37 +381,28 @@ function renderPlayers({ renderNames = true } = {}) {
         // Clear the whole player area (circle + name + dot)
         ctx.clearRect(circleX - radius - 10, yPosition - radius - 5, canvas.width, radius * 2 + 10);
 
-        // Re-draw circle with current number
-        renderPlayerCircle(ctx, circleX, yPosition, card_amounts[index]);
-        
+        // Re-draw circle with current number, if index is current index, change green color 
+        renderPlayerCircle(ctx, circleX, yPosition, card_amounts[index], index === currentTurnIndex);
+
 
         // Render name and turn indicator if requested
         if (renderNames) {
             renderPlayerName(ctx, textX, yPosition, player.display_name);
-
-            // 🟢 Draw green dot if it's this player's turn
-            if (index === currentTurnIndex) {
-                renderTurnIndicator(ctx, textX - 15, yPosition); // position dot to the left of name
-            }
         }
     });
 }
-function renderTurnIndicator(ctx, x, y) {
-    const dotRadius = 6;
-    ctx.beginPath();
-    ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-    ctx.fillStyle = "limegreen"; // Bright green
-    ctx.fill();
-    ctx.closePath();
-}
 
-function renderPlayerCircle(ctx, x, y, number) {
+function renderPlayerCircle(ctx, x, y, number, isPlayerTurn) {
     const radius = 15;
 
     // Draw circle
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = "#007BFF"; // Blue fill
+    if (!isPlayerTurn) {
+        ctx.fillStyle = "#007BFF"; // Blue fill
+    } else {
+        ctx.fillStyle = "limegreen"; // Bright green
+    }
     ctx.fill();
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#FFFFFF";
@@ -297,7 +415,7 @@ function renderPlayerCircle(ctx, x, y, number) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(number, x, y);
-    
+
 }
 
 function renderPlayerName(ctx, x, y, name) {
@@ -306,4 +424,35 @@ function renderPlayerName(ctx, x, y, name) {
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(name, x, y);
+}
+
+function renderCardPlaced(card_name, after_finished) {
+    if (!card_name || card_name === "") {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        after_finished();
+        return;
+    }
+    const image = new Image();
+    image.src = `/egyptian-war/images/cards/${card_name}.png`;
+    let scale = 0.01;
+    targetScale = 0.25;
+    let direction = 0.025; // speed to change scale for
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        after_finished();
+        ctx.drawImage(image, canvas.width / 2 - (image.width * scale / 2), canvas.height / 2 - (image.height * scale / 2), image.width * scale, image.height * scale);
+        scale += direction;
+        if (scale >= targetScale) {
+            after_finished();
+            ctx.drawImage(image, canvas.width / 2 - (image.width * scale / 2), canvas.height / 2 - (image.height * scale / 2), image.width * scale, image.height * scale);
+            return;
+        }
+        requestAnimationFrame(draw);
+    }
+    image.onload = function () {
+        draw();
+    }
+    image.onerror = function () {
+        console.error("image error");
+    }
 }

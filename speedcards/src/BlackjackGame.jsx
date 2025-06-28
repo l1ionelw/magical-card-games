@@ -1,14 +1,15 @@
 import React, { useEffect, useReducer } from "react";
 import { createDeck, createHand } from "./cardGamesModels";
 import PlayingCardView from "./PlayingCardView.jsx";
-import { motion } from "framer-motion";
 
+// --- Chip denominations/colors (for display) ---
 const CHIP_DENOMS = [
-    { value: 100, color: "#222" },
-    { value: 50, color: "#009aff" },
-    { value: 10, color: "#e94b4b" },
+    { value: 100, color: "#222" }, // black
+    { value: 50, color: "#009aff" }, // blue
+    { value: 10, color: "#e94b4b" }, // red
 ];
 
+// --- Utility to break amount into chips ---
 function makeChipStack(amount) {
     let chips = [];
     let left = amount;
@@ -21,10 +22,11 @@ function makeChipStack(amount) {
     return chips;
 }
 
+// --- Initial State ---
 const initialState = {
-    deck: null,
-    playerHand: null,
-    dealerHand: null,
+    deck: createDeck(),
+    playerHand: createHand(),
+    dealerHand: createHand(),
     playerChips: 500,
     playerBet: 50,
     betPlaced: false,
@@ -39,6 +41,7 @@ const initialState = {
     confetti: false,
 };
 
+// --- Reducer for complex state logic ---
 function reducer(state, action) {
     switch (action.type) {
         case "RESET":
@@ -57,12 +60,17 @@ function reducer(state, action) {
                 betPlaced: true,
                 error: "",
             };
-        case "DEAL": {
+        case "DEAL":
+            // Deal two to player, two to dealer (one face down)
             const deck = createDeck();
-            const playerCards = [deck.draw(true), deck.draw(true)];
-            const dealerCards = [deck.draw(false), deck.draw(true)];
-            const playerHand = createHand(playerCards);
-            const dealerHand = createHand(dealerCards);
+            const playerHand = createHand([
+                { ...deck.draw(), isFaceUp: true },
+                { ...deck.draw(), isFaceUp: true },
+            ]);
+            const dealerHand = createHand([
+                { ...deck.draw(), isFaceUp: false },
+                { ...deck.draw(), isFaceUp: true },
+            ]);
             let allowedToDouble =
                 playerHand.cards.length === 2 &&
                 state.playerChips >= state.playerBet &&
@@ -81,15 +89,14 @@ function reducer(state, action) {
                 chipDelta: 0,
                 confetti: false,
             };
-        }
         case "PLAYER_HIT":
             if (!state.isPlayerTurn || state.isGameOver) return state;
-            const card = state.deck.draw(true);
-            const newPlayerHand = createHand([...state.playerHand.cards, card]);
-            let bust = newPlayerHand.isBusted();
+            var card = { ...state.deck.draw(), isFaceUp: true };
+            state.playerHand.add(card);
+            let bust = state.playerHand.isBusted();
             return {
                 ...state,
-                playerHand: newPlayerHand,
+                playerHand: createHand([...state.playerHand.cards]),
                 allowedToDouble: false,
                 isPlayerTurn: !bust,
                 isGameOver: bust,
@@ -108,36 +115,36 @@ function reducer(state, action) {
                 state.playerChips < state.playerBet
             )
                 return state;
-            const doubleCard = state.deck.draw(true);
-            const handAfterDouble = createHand([...state.playerHand.cards, doubleCard]);
-            const busted = handAfterDouble.isBusted();
+            var doubleCard = { ...state.deck.draw(), isFaceUp: true };
+            state.playerHand.add(doubleCard);
             return {
                 ...state,
-                playerHand: handAfterDouble,
+                playerHand: createHand([...state.playerHand.cards]),
                 playerChips: state.playerChips - state.playerBet,
                 playerBet: state.playerBet * 2,
                 allowedToDouble: false,
                 isPlayerTurn: false,
-                dealerReveals: !busted,
-                isGameOver: busted,
-                blackjackResult: busted ? "You busted! Dealer wins." : "",
+                dealerReveals: true,
             };
         case "DEALER_PLAY":
+            // Reveal dealer's first card
             state.dealerHand.cards[0].isFaceUp = true;
             let dHand = createHand([...state.dealerHand.cards]);
+            // Dealer draws to 17+
             while (
                 dHand.value() < 17 ||
                 (dHand.value() === 17 && dHand.isSoft && dHand.isSoft())
                 ) {
-                let drawn = state.deck.draw(true);
+                let drawn = { ...state.deck.draw(), isFaceUp: true };
                 if (!drawn || !drawn.rank) break;
-                dHand.cards.push(drawn);
+                dHand.add(drawn);
             }
             return {
                 ...state,
                 dealerHand: createHand([...dHand.cards]),
             };
-        case "END_GAME": {
+        case "END_GAME":
+            // Settle, show messages, chips, confetti
             let pHand = state.playerHand;
             let dHandEnd = state.dealerHand;
             let resultMsg = "";
@@ -189,7 +196,6 @@ function reducer(state, action) {
                 betPlaced: false,
                 confetti: win,
             };
-        }
         case "CLEAR_ERROR":
             return { ...state, error: "" };
         default:
@@ -197,24 +203,34 @@ function reducer(state, action) {
     }
 }
 
+// --- Display Helpers ---
+function cardDisplay(card) {
+    return card.isFaceUp ? `${card.rank.display}${card.suit.symbol}` : "🂠";
+}
+
+// --- Main Component ---
 export default function BlackjackGame({ onBack }) {
     const [state, dispatch] = useReducer(reducer, initialState);
 
+    // After bet placed, deal
     useEffect(() => {
         if (state.betPlaced) {
             dispatch({ type: "DEAL" });
         }
+        // eslint-disable-next-line
     }, [state.betPlaced]);
 
+    // After dealerReveals, play dealer and then end game
     useEffect(() => {
         if (state.dealerReveals && !state.isGameOver) {
             setTimeout(() => {
                 dispatch({ type: "DEALER_PLAY" });
                 setTimeout(() => {
                     dispatch({ type: "END_GAME" });
-                }, 1100);
+                }, 1100); // dealer play animation
             }, 700);
         }
+        // eslint-disable-next-line
     }, [state.dealerReveals]);
 
     function handleBet(amount) {
@@ -251,7 +267,7 @@ export default function BlackjackGame({ onBack }) {
                             className="cg-btn"
                             style={{
                                 marginRight: 14,
-                                background: state.playerChips < amt ? "#777" : "#333",
+                                background: state.playerChips < amt ? "#777" : CHIP_DENOMS.find((c) => c.value === amt)?.color,
                                 color: "#fff",
                                 opacity: state.playerChips < amt ? 0.5 : 1,
                             }}
@@ -264,64 +280,29 @@ export default function BlackjackGame({ onBack }) {
                 </div>
             )}
 
-            <div className="bj-hands" style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 40, // Increased spacing between dealer and player sections
-                marginTop: 10
-            }}>
+            {/* Hands */}
+            <div className="bj-hands" style={{ display: "flex", flexDirection: "column", gap: 30, marginTop: 10 }}>
+                {/* Dealer */}
                 <div>
-                    <div style={{
-                        fontWeight: "bold",
-                        marginBottom: 16, // Space between value and dealer cards
-                        fontSize: 18,
-                    }}>
-                        Dealer {state.dealerReveals || state.isGameOver ? `(Value: ${state.dealerHand?.value()})` : "(Value: ?)"}
-                    </div>
-                    <div style={{
-                        display: "flex",
-                        gap: 14,
-                        margin: "auto"
-                    }}>
-                        {state.dealerHand?.cards.map((c, i) => (
-                            <motion.div
-                                key={c.id || i}
-                                initial={{ y: -30, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                transition={{ duration: 0.5 }}
-                            >
-                                <PlayingCardView card={c} size={72} />
-                            </motion.div>
+                    <div style={{ fontWeight: "bold" }}>Dealer {state.dealerReveals || state.isGameOver ? `(Value: ${state.dealerHand.value()})` : "(Value: ?)"}</div>
+                    <div style={{ display: "flex", gap: 10, margin: "auto" }}>
+                        {state.dealerHand.cards.map((c, i) => (
+                            <PlayingCardView key={c.id || i} card={c} size={72} />
                         ))}
                     </div>
                 </div>
+                {/* Player */}
                 <div>
-                    <div style={{
-                        fontWeight: "bold",
-                        marginBottom: 16, // Space between value and player cards
-                        fontSize: 18,
-                    }}>
-                        You (Value: {state.playerHand?.value()})
-                    </div>
-                    <div style={{
-                        display: "flex",
-                        gap: 14,
-                        margin: "auto"
-                    }}>
-                        {state.playerHand?.cards.map((c, i) => (
-                            <motion.div
-                                key={c.id || i}
-                                initial={{ y: 40, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                transition={{ duration: 0.5 }}
-                            >
-                                <PlayingCardView card={c} size={72} />
-                            </motion.div>
+                    <div style={{ fontWeight: "bold" }}>You (Value: {state.playerHand.value()})</div>
+                    <div style={{ display: "flex", gap: 10, margin: "auto" }}>
+                        {state.dealerHand.cards.map((c, i) => (
+                            <PlayingCardView key={c.id || i} card={c} size={72} />
                         ))}
                     </div>
                 </div>
             </div>
 
+            {/* Action buttons */}
             {state.betPlaced && !state.isGameOver && (
                 <div style={{ marginTop: 20 }}>
                     <button
@@ -358,6 +339,7 @@ export default function BlackjackGame({ onBack }) {
                     </button>
                 </div>
             )}
+            {/* Results */}
             {state.isGameOver && (
                 <div style={{ marginTop: 22, fontSize: 21, fontWeight: "bold", color: "#ffe066" }}>
                     {state.blackjackResult}
@@ -368,6 +350,7 @@ export default function BlackjackGame({ onBack }) {
                     </div>
                 </div>
             )}
+            {/* Chip delta display */}
             {state.showChipDelta && (
                 <div
                     style={{
@@ -381,6 +364,7 @@ export default function BlackjackGame({ onBack }) {
                     {state.chipDelta > 0 ? `+${state.chipDelta}` : state.chipDelta}
                 </div>
             )}
+            {/* Confetti (simple emoji) */}
             {state.confetti && (
                 <div style={{ fontSize: 42, marginTop: 20 }}>🎉</div>
             )}

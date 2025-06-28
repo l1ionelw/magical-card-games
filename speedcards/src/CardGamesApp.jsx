@@ -2,6 +2,7 @@ import React, { useState, useContext, createContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./cga.css";
 import BlackjackGame from "./BlackjackGame.jsx";
+import SpeedGame from "./SpeedGame.jsx";
 
 // ---------- Contexts ----------
 
@@ -17,16 +18,16 @@ const GameScreen = {
     GAME: (gameType) => ({ type: "game", game: gameType }),
 };
 
-function useNavigation() {
+export function useNavigation() {
     return useContext(NavigationContext);
 }
-function useTheme() {
+export function useTheme() {
     return useContext(ThemeContext);
 }
-function useGlobalGame() {
+export function useGlobalGame() {
     return useContext(GlobalGameContext);
 }
-function useSettings() {
+export function useSettings() {
     return useContext(SettingsContext);
 }
 
@@ -45,7 +46,7 @@ const CardGameTypes = [
         displayName: "Speed",
         description: "Fastest player wins.",
         previewImage: "preview_speed",
-        isPlayable: false,
+        isPlayable: true,
     },
     // ... add others as needed
 ];
@@ -241,20 +242,20 @@ function PlayerStatsBar() {
         <div className="cg-statsbar">
             <span className="cg-avatar">👤</span>
             <span>
-                <b style={{ fontSize: 19 }}>{globalGame.playerName}</b>
-                <br />
-                <span style={{ fontSize: 15, opacity: 0.7 }}>
-                    Chips: ${globalGame.chips}
-                </span>
-            </span>
+        <b style={{ fontSize: 19 }}>{globalGame.playerName}</b>
+        <br />
+        <span style={{ fontSize: 15, opacity: 0.7 }}>
+          Chips: ${globalGame.chips}
+        </span>
+      </span>
             <span style={{ flex: 1 }}></span>
             <span style={{ textAlign: "right", fontSize: 14, opacity: 0.8 }}>
-                Blackjack:
-                <br />
-                <span style={{ opacity: 0.75 }}>
-                    W: {stats.wins}, L: {stats.losses}, D: {stats.draws}
-                </span>
-            </span>
+        Blackjack:
+        <br />
+        <span style={{ opacity: 0.75 }}>
+          W: {stats.wins}, L: {stats.losses}, D: {stats.draws}
+        </span>
+      </span>
         </div>
     );
 }
@@ -265,6 +266,8 @@ function GameContainerView({ gameType }) {
     const navigation = useNavigation();
     if (gameType === "blackjack")
         return <BlackjackGame onBack={navigation.goHome} />;
+    if (gameType === "speed")
+        return <SpeedGame onBack={navigation.goHome} />;
     return <PlaceholderGameView gameKey={gameType} />;
 }
 

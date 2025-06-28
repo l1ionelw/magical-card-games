@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import PlayingCardView from "./PlayingCardView.jsx";
-import PlayingCardBackWithCount from "./PlayingCardBackWithCount.jsx";
+import PlayingCardView from "./PlayingCardView";
+import PlayingCardBackWithCount from "./PlayingCardBackWithCount";
 
 const fullDeck = () =>
     Array.from({ length: 13 }, (_, i) => i + 1).flatMap((n) => [n, n, n, n]);
