@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: egyptian-war-cardgame
+    env: node
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true
+    branch: master
+    rootDir: .
