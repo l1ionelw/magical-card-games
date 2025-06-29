@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const expressWs = require('express-ws')(app);
 const cors = require('cors')
-const {resolve} = require("node:path");
+const { resolve } = require("node:path");
 
 // Middleware for parsing JSON and URL-encoded bodies
 app.use(express.json());
@@ -40,7 +40,7 @@ function getUserIP(req) {
 
 // Routes
 app.get('/', (req, res) => {
-    res.send('Hello World!');
+    res.redirect("/egyptian-war/");
 });
 app.get('/egyptian-war/', (req, res) => {
     res.sendFile(resolve("egyptian-war/index.html"));
@@ -95,7 +95,7 @@ app.ws('/create-lobby', (ws, req) => {
                 lobbies.push(thisLobby);
                 console.log("Lobby created!");
                 console.log(thisLobby);
-                
+
                 // Send lobby info back to client
                 ws.send(JSON.stringify({
                     type: 'lobby_created',
@@ -125,63 +125,63 @@ app.ws('/join-lobby', (ws, req) => {
     let lobbyId = -1;
     console.log("user of ip: " + userIP + " wants to join lobby");
     ws.on('message', (message) => {
-    const joinInfo = JSON.parse(message);
-    console.log(joinInfo);
-    if (!joinInfo || !joinInfo.lobbyId || !joinInfo.displayName) {
-        ws.send(JSON.stringify({type: 'error', message: 'Request not valid'}));
-        return;
-    }
-    const lobby = lobbies.find(l => l.id === parseInt(joinInfo.lobbyId));
-    if (!lobby) {
-        ws.send(JSON.stringify({type: 'error', message: 'Lobby not found'}));
-        return;
-    }
+        const joinInfo = JSON.parse(message);
+        console.log(joinInfo);
+        if (!joinInfo || !joinInfo.lobbyId || !joinInfo.displayName) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Request not valid' }));
+            return;
+        }
+        const lobby = lobbies.find(l => l.id === parseInt(joinInfo.lobbyId));
+        if (!lobby) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Lobby not found' }));
+            return;
+        }
 
-    if (lobby.state !== 'waiting') {
-        ws.send(JSON.stringify({type: 'error', message: 'Game already in progress'}));
-        return;
-    }
+        if (lobby.state !== 'waiting') {
+            ws.send(JSON.stringify({ type: 'error', message: 'Game already in progress' }));
+            return;
+        }
 
-    // 🚫 Check for duplicate display name
-    const existingPlayer = lobby.players.find(player => player.display_name === joinInfo.displayName);
-    if (existingPlayer) {
-        ws.send(JSON.stringify({type: 'error', message: 'Display name already taken in this lobby'}));
-        return;
-    }
+        // 🚫 Check for duplicate display name
+        const existingPlayer = lobby.players.find(player => player.display_name === joinInfo.displayName);
+        if (existingPlayer) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Display name already taken in this lobby' }));
+            return;
+        }
 
-    displayName = joinInfo.displayName;
-    lobbyId = joinInfo.lobbyId;
+        displayName = joinInfo.displayName;
+        lobbyId = joinInfo.lobbyId;
 
-    lobby.players.push({
-        display_name: joinInfo.displayName,
-        ip: userIP,
-        websocket: ws
-    });
+        lobby.players.push({
+            display_name: joinInfo.displayName,
+            ip: userIP,
+            websocket: ws
+        });
 
-    // ✅ Notify all players in the lobby
-    lobby.players.forEach(player => {
-        player.websocket.send(JSON.stringify({
-            type: 'player_joined',
-            playerDisplayName: joinInfo.displayName,
-            players: lobby.players.map(p => ({display_name: p.display_name}))
-        }));
-    });
-
-    // ❌ Handle player disconnection
-    ws.on("close", () => {
-        console.log(`he left the lobby`);
-        console.log(`Removed player '${displayName}' from lobby ${lobbyId}`);
-        lobby.players = lobby.players.filter(player => player.display_name !== displayName);
-
+        // ✅ Notify all players in the lobby
         lobby.players.forEach(player => {
             player.websocket.send(JSON.stringify({
-                type: 'player_left',
+                type: 'player_joined',
                 playerDisplayName: joinInfo.displayName,
-                players: lobby.players.map(p => ({display_name: p.display_name}))
+                players: lobby.players.map(p => ({ display_name: p.display_name }))
             }));
         });
+
+        // ❌ Handle player disconnection
+        ws.on("close", () => {
+            console.log(`he left the lobby`);
+            console.log(`Removed player '${displayName}' from lobby ${lobbyId}`);
+            lobby.players = lobby.players.filter(player => player.display_name !== displayName);
+
+            lobby.players.forEach(player => {
+                player.websocket.send(JSON.stringify({
+                    type: 'player_left',
+                    playerDisplayName: joinInfo.displayName,
+                    players: lobby.players.map(p => ({ display_name: p.display_name }))
+                }));
+            });
+        });
     });
-});
 
 });
 app.ws('/start-game', (ws, req) => {
@@ -193,11 +193,11 @@ app.ws('/start-game', (ws, req) => {
         const lobbyDetails = JSON.parse(message);
         console.log(lobbyDetails);
         if (!lobbyDetails || !lobbyDetails.lobbyId) {
-            ws.send(JSON.stringify({type: 'error', message: 'Request not valid'}));
+            ws.send(JSON.stringify({ type: 'error', message: 'Request not valid' }));
             return;
         }
         // send ws to everyone to start game 
-        const lobby = lobbies.find(lobby=>lobby.id == lobbyDetails.lobbyId);
+        const lobby = lobbies.find(lobby => lobby.id == lobbyDetails.lobbyId);
         console.log("lobby to start: ");
         console.log(lobby);
         lobby.players.forEach(player => {
@@ -215,25 +215,25 @@ app.ws('/register-ingame', (ws, req) => {
         let parsed = JSON.parse(message);
         console.log(parsed);
         if (!parsed.action) {
-            ws.send(JSON.stringify({type: 'error', message: 'Request not valid'}));
+            ws.send(JSON.stringify({ type: 'error', message: 'Request not valid' }));
             return;
         }
         if (parsed.action === "sendLobbyId") {
             lobbyId = parsed.lobbyId;
             lobby = lobbies.find(lobby => lobby.id == lobbyId);
             // each client will send this, so for each of them, get their username and update their websocket so that it sends to js handler
-            let player = lobby.players.find(player=> player.display_name === parsed.display_name);
+            let player = lobby.players.find(player => player.display_name === parsed.display_name);
             console.log("found this player: " + player);
             player.websocket = ws;
             let cardsShuffled = distributeCards(lobby.players.length);
             let card_amounts = cardsShuffled.map(cardList => cardList.length);
             // send back for each player in the lobby, the index for their card
             for (let index in cardsShuffled) {
-                lobby.players[index].websocket.send(JSON.stringify({action: "distribute_cards", cards: cardsShuffled[index], card_amounts: card_amounts}));
+                lobby.players[index].websocket.send(JSON.stringify({ action: "distribute_cards", cards: cardsShuffled[index], card_amounts: card_amounts }));
             }
             return;
         }
-        if (!lobby) {console.log("no lobby");return;};
+        if (!lobby) { console.log("no lobby"); return; };
         console.log("sending the message to all other players in REGSIRTER GAM");
         console.log(lobby);
         console.log(lobby.players);
@@ -249,34 +249,34 @@ function distributeCards(peopleToSplitInto) {
     console.log("distributing among: " + peopleToSplitInto + " players");
     const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
     const ranks = ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king'];
-    
+
     // Generate all cards
     const deck = [];
     for (const suit of suits) {
         for (const rank of ranks) {
-        deck.push(`${rank}_of_${suit}`);
+            deck.push(`${rank}_of_${suit}`);
         }
     }
     // deck.forEach(card => {
     //     console.log(card);
     // });
     console.log(deck.length);
-    
+
     // Shuffle the deck using Fisher-Yates algorithm
     for (let i = deck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];
     }
-    
+
     // Initialize hands for each person
     const hands = Array.from({ length: peopleToSplitInto }, () => []);
-    
+
     // Distribute cards evenly (round-robin style)
     for (let i = 0; i < deck.length; i++) {
         const personIndex = i % peopleToSplitInto;
         hands[personIndex].push(deck[i]);
     }
-    
+
     return hands;
 }
 

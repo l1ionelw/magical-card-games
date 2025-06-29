@@ -2,6 +2,7 @@ import React, { useState, useContext, createContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./cga.css";
 import BlackjackGame from "./BlackjackGame.jsx";
+import SpeedGame from "./SpeedGame.jsx";
 
 // ---------- Contexts ----------
 
@@ -17,16 +18,16 @@ const GameScreen = {
     GAME: (gameType) => ({ type: "game", game: gameType }),
 };
 
-function useNavigation() {
+export function useNavigation() {
     return useContext(NavigationContext);
 }
-function useTheme() {
+export function useTheme() {
     return useContext(ThemeContext);
 }
-function useGlobalGame() {
+export function useGlobalGame() {
     return useContext(GlobalGameContext);
 }
-function useSettings() {
+export function useSettings() {
     return useContext(SettingsContext);
 }
 
@@ -45,7 +46,7 @@ const CardGameTypes = [
         displayName: "Speed",
         description: "Fastest player wins.",
         previewImage: "preview_speed",
-        isPlayable: false,
+        isPlayable: true,
     },
     // ... add others as needed
 ];
@@ -63,7 +64,7 @@ function defaultTheme() {
         chipColor: "#ffe066",
         cardBackColor: "#323258",
         darkMode: false,
-        toggleTheme: () => {},
+        toggleTheme: () => { },
     };
 }
 
@@ -75,7 +76,7 @@ function defaultGlobalState() {
         chips: 1000,
         stats: {},
         recentGames: [],
-        recordResult: (gameKey, result) => {},
+        recordResult: (gameKey, result) => { },
     };
 }
 
@@ -265,6 +266,8 @@ function GameContainerView({ gameType }) {
     const navigation = useNavigation();
     if (gameType === "blackjack")
         return <BlackjackGame onBack={navigation.goHome} />;
+    if (gameType === "speed")
+        return <SpeedGame onBack={navigation.goHome} />;
     return <PlaceholderGameView gameKey={gameType} />;
 }
 
