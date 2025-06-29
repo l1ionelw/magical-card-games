@@ -51,16 +51,16 @@ app.get('/egyptian-war/lobby/', (req, res) => {
 app.get('/egyptian-war/join/:id', (req, res) => {
     res.sendFile(resolve("pages/egyptian-war/join-lobby.html"));
 });
-app.get('/debug/get-all-lobbies', (req, res) => {
-    const sanitizedLobbies = lobbies.map(lobby => ({
-        ...lobby,
-        players: lobby.players.map(player => ({
-            display_name: player.display_name,
-            ip: player.ip
-        }))
-    }));
-    return res.json(sanitizedLobbies);
-});
+// app.get('/debug/get-all-lobbies', (req, res) => {
+//     const sanitizedLobbies = lobbies.map(lobby => ({
+//         ...lobby,
+//         players: lobby.players.map(player => ({
+//             display_name: player.display_name,
+//             ip: player.ip
+//         }))
+//     }));
+//     return res.json(sanitizedLobbies);
+// });
 
 
 
