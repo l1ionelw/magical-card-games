@@ -296,7 +296,7 @@
         // start websocket action
         console.log("connecting to websocket");
         // start a websocket connection with {operation: "NEW_GAME"}
-        const ws = new WebSocket(`ws://${window.location.host}/create-lobby`);
+        const ws = new WebSocket(`wss://${window.location.host}/create-lobby`);
 
         ws.onopen = function() {
             console.log('WebSocket connected');
@@ -380,7 +380,7 @@
         function startGame() {
             // alert('Starting game... (placeholder)');
             console.log("starting game client side");
-            const tws = new WebSocket(`ws://${window.location.host}/start-game`);
+            const tws = new WebSocket(`wss://${window.location.host}/start-game`);
 
             tws.onopen = function() {
                 console.log('WebSocket connected');

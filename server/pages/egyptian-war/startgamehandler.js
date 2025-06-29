@@ -183,7 +183,7 @@ function setupGameWebsockets() {
       {action: "place_card"} // server determines value + gamestate
       {action: "slam"}
       */
-    gameWs = new WebSocket(`ws://${window.location.host}/register-ingame`);
+    gameWs = new WebSocket(`wss://${window.location.host}/register-ingame`);
     gameWs.onopen = function () {
         console.log("websocket connected, sending lobby id and username");
         gameWs.send(JSON.stringify({ action: "sendLobbyId", lobbyId: LOBBY_ID, display_name: username }))

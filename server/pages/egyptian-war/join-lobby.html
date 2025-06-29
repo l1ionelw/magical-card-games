@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -223,223 +224,225 @@
                 font-size: 2rem;
             }
 
-            .join-btn, .leave-btn {
+            .join-btn,
+            .leave-btn {
                 width: 100%;
                 max-width: 250px;
             }
         }
     </style>
 </head>
+
 <body>
-<div class="container">
-    <!-- Name Entry Screen -->
-    <div class="name-entry-screen" id="nameEntryScreen">
-        <h1 class="game-title">Egyptian WAR</h1>
-        <p class="subtitle">Join Game Lobby</p>
+    <div class="container">
+        <!-- Name Entry Screen -->
+        <div class="name-entry-screen" id="nameEntryScreen">
+            <h1 class="game-title">Egyptian WAR</h1>
+            <p class="subtitle">Join Game Lobby</p>
 
-        <div class="name-input-container">
-            <input type="text" class="name-input" id="playerNameInput" placeholder="Enter your name" maxlength="20">
-        </div>
-
-        <button class="join-btn" id="joinLobbyBtn" onclick="joinLobby()">
-            🎮 Join Lobby
-        </button>
-
-        <div id="errorMessage" style="display: none;"></div>
-    </div>
-
-    <!-- Lobby Screen -->
-    <div class="lobby-screen" id="lobbyScreen">
-        <h1 class="game-title">Egyptian WAR</h1>
-        <p class="subtitle">Game Lobby</p>
-
-        <div class="username-display" id="usernameDisplay">
-            Welcome, Player!
-        </div>
-
-        <div class="players-section">
-            <h3 class="section-title">Players in Lobby</h3>
-            <div class="players-list" id="playersList">
-                <div class="no-players">Loading players...</div>
+            <div class="name-input-container">
+                <input type="text" class="name-input" id="playerNameInput" placeholder="Enter your name" maxlength="20">
             </div>
+
+            <button class="join-btn" id="joinLobbyBtn" onclick="joinLobby()">
+                🎮 Join Lobby
+            </button>
+
+            <div id="errorMessage" style="display: none;"></div>
         </div>
 
-        <div class="waiting-message">
-            ⏳ Waiting for host to start the game...
-        </div>
+        <!-- Lobby Screen -->
+        <div class="lobby-screen" id="lobbyScreen">
+            <h1 class="game-title">Egyptian WAR</h1>
+            <p class="subtitle">Game Lobby</p>
 
-        <button class="leave-btn" onclick="leaveLobby()">
-            🚪 Leave Lobby
-        </button>
+            <div class="username-display" id="usernameDisplay">
+                Welcome, Player!
+            </div>
+
+            <div class="players-section">
+                <h3 class="section-title">Players in Lobby</h3>
+                <div class="players-list" id="playersList">
+                    <div class="no-players">Loading players...</div>
+                </div>
+            </div>
+
+            <div class="waiting-message">
+                ⏳ Waiting for host to start the game...
+            </div>
+
+            <button class="leave-btn" onclick="leaveLobby()">
+                🚪 Leave Lobby
+            </button>
+        </div>
     </div>
-</div>
 
 
 
-<script>
-    let ws = null;
-    let lobbyId = null;
-    let playerName = null;
-    let players = [];
-    let username = null;
+    <script>
+        let ws = null;
+        let lobbyId = null;
+        let playerName = null;
+        let players = [];
+        let username = null;
 
-    // Extract lobby ID from URL
-    function getLobbyIdFromUrl() {
-        const path = window.location.pathname;
-        const match = path.match(/\/join\/(\d+)/);
-        return match ? match[1] : null;
-    }
-    let LOBBY_ID = getLobbyIdFromUrl();
-
-    // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
-        lobbyId = getLobbyIdFromUrl();
-        if (!lobbyId) {
-            showError('Invalid lobby URL');
-            return;
+        // Extract lobby ID from URL
+        function getLobbyIdFromUrl() {
+            const path = window.location.pathname;
+            const match = path.match(/\/join\/(\d+)/);
+            return match ? match[1] : null;
         }
+        let LOBBY_ID = getLobbyIdFromUrl();
 
-        // Enable join button when name is entered
-        const nameInput = document.getElementById('playerNameInput');
-        const joinBtn = document.getElementById('joinLobbyBtn');
-
-        nameInput.addEventListener('input', function() {
-            joinBtn.disabled = this.value.trim().length === 0;
-        });
-
-        // Allow Enter key to join
-        nameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && this.value.trim().length > 0) {
-                joinLobby();
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            lobbyId = getLobbyIdFromUrl();
+            if (!lobbyId) {
+                showError('Invalid lobby URL');
+                return;
             }
+
+            // Enable join button when name is entered
+            const nameInput = document.getElementById('playerNameInput');
+            const joinBtn = document.getElementById('joinLobbyBtn');
+
+            nameInput.addEventListener('input', function () {
+                joinBtn.disabled = this.value.trim().length === 0;
+            });
+
+            // Allow Enter key to join
+            nameInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter' && this.value.trim().length > 0) {
+                    joinLobby();
+                }
+            });
+
+            joinBtn.disabled = true;
         });
 
-        joinBtn.disabled = true;
-    });
+        function joinLobby() {
+            const nameInput = document.getElementById('playerNameInput');
+            username = nameInput.value.trim();
 
-    function joinLobby() {
-        const nameInput = document.getElementById('playerNameInput');
-        username = nameInput.value.trim();
+            if (!username) {
+                showError('Please enter your name');
+                return;
+            }
 
-        if (!username) {
-            showError('Please enter your name');
-            return;
+            if (!lobbyId) {
+                showError('Invalid lobby ID');
+                return;
+            }
+
+            // Disable the join button and show loading
+            const joinBtn = document.getElementById('joinLobbyBtn');
+            joinBtn.disabled = true;
+            joinBtn.textContent = '🔄 Joining...';
+
+            // Connect to WebSocket
+            connectToLobby();
         }
 
-        if (!lobbyId) {
-            showError('Invalid lobby ID');
-            return;
-        }
+        function connectToLobby() {
+            console.log(`Connecting to lobby ${lobbyId} as ${username}`);
 
-        // Disable the join button and show loading
-        const joinBtn = document.getElementById('joinLobbyBtn');
-        joinBtn.disabled = true;
-        joinBtn.textContent = '🔄 Joining...';
+            ws = new WebSocket(`wss://${window.location.host}/join-lobby`);
 
-        // Connect to WebSocket
-        connectToLobby();
-    }
+            ws.onopen = function () {
+                console.log('WebSocket connected');
+                // Send join lobby request
+                ws.send(JSON.stringify({
+                    lobbyId: lobbyId,
+                    displayName: username
+                }));
+            };
 
-    function connectToLobby() {
-        console.log(`Connecting to lobby ${lobbyId} as ${username}`);
+            ws.onmessage = function (event) {
+                const response = JSON.parse(event.data);
+                console.log('Server response:', response);
 
-        ws = new WebSocket(`ws://${window.location.host}/join-lobby`);
+                if (response.type === 'error') {
+                    showError(response.message);
+                    resetJoinButton();
+                } else if (response.type === 'player_joined') {
+                    // Successfully joined - switch to lobby screen
+                    showLobbyScreen();
+                    players = response.players || [];
+                    updatePlayersList();
+                } else if (response.type === 'player_left') {
+                    // delete the player
+                    players = players.filter(player => player.display_name !== response.playerDisplayName);
+                    updatePlayersList();
+                } else if (response.type === "start_game") {
+                    console.log("STARTING GAME");
+                    startGameHandler();
+                    setupGameWebsockets();
+                }
+            };
 
-        ws.onopen = function() {
-            console.log('WebSocket connected');
-            // Send join lobby request
-            ws.send(JSON.stringify({
-                lobbyId: lobbyId,
-                displayName: username
-            }));
-        };
+            ws.onclose = function () {
+                console.log('WebSocket disconnected');
+                if (document.getElementById('lobbyScreen').style.display !== 'none') {
+                    showError('Connection lost. Please try rejoining.');
+                }
+            };
 
-        ws.onmessage = function(event) {
-            const response = JSON.parse(event.data);
-            console.log('Server response:', response);
-
-            if (response.type === 'error') {
-                showError(response.message);
+            ws.onerror = function (error) {
+                console.error('WebSocket error:', error);
+                showError('Connection failed. Please try again.');
                 resetJoinButton();
-            } else if (response.type === 'player_joined') {
-                // Successfully joined - switch to lobby screen
-                showLobbyScreen();
-                players = response.players || [];
-                updatePlayersList();
-            } else if (response.type === 'player_left') {
-                // delete the player
-                players = players.filter(player => player.display_name !== response.playerDisplayName);
-                updatePlayersList();
-            } else if (response.type === "start_game") {
-                console.log("STARTING GAME");
-                startGameHandler();
-                setupGameWebsockets();
-            }
-        };
+            };
+        }
 
-        ws.onclose = function() {
-            console.log('WebSocket disconnected');
-            if (document.getElementById('lobbyScreen').style.display !== 'none') {
-                showError('Connection lost. Please try rejoining.');
-            }
-        };
+        function showLobbyScreen() {
+            document.getElementById('nameEntryScreen').style.display = 'none';
+            document.getElementById('lobbyScreen').style.display = 'block';
+            document.getElementById('usernameDisplay').textContent = `Welcome, ${username}!`;
+        }
 
-        ws.onerror = function(error) {
-            console.error('WebSocket error:', error);
-            showError('Connection failed. Please try again.');
-            resetJoinButton();
-        };
-    }
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
 
-    function showLobbyScreen() {
-        document.getElementById('nameEntryScreen').style.display = 'none';
-        document.getElementById('lobbyScreen').style.display = 'block';
-        document.getElementById('usernameDisplay').textContent = `Welcome, ${username}!`;
-    }
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
 
-    function showError(message) {
-        const errorDiv = document.getElementById('errorMessage');
-        errorDiv.className = 'error-message';
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
+        function resetJoinButton() {
+            const joinBtn = document.getElementById('joinLobbyBtn');
+            joinBtn.disabled = false;
+            joinBtn.textContent = '🎮 Join Lobby';
+        }
 
-        setTimeout(() => {
-            errorDiv.style.display = 'none';
-        }, 5000);
-    }
+        function updatePlayersList() {
+            const playersList = document.getElementById('playersList');
 
-    function resetJoinButton() {
-        const joinBtn = document.getElementById('joinLobbyBtn');
-        joinBtn.disabled = false;
-        joinBtn.textContent = '🎮 Join Lobby';
-    }
-
-    function updatePlayersList() {
-        const playersList = document.getElementById('playersList');
-
-        if (players.length === 0) {
-            playersList.innerHTML = '<div class="no-players">No players in lobby...</div>';
-        } else {
-            playersList.innerHTML = players.map(player => `
+            if (players.length === 0) {
+                playersList.innerHTML = '<div class="no-players">No players in lobby...</div>';
+            } else {
+                playersList.innerHTML = players.map(player => `
                     <div class="player-item">
                         <span class="player-name">${player.display_name}</span>
                         <span class="player-status">Ready</span>
                     </div>
                 `).join('');
-        }
-    }
-
-    function leaveLobby() {
-        if (confirm('Are you sure you want to leave the lobby?')) {
-            if (ws) {
-                ws.close();
             }
-            window.location.href = '/';
         }
-    }
-</script>
 
-<script src="/egyptian-war/startgamehandler.js"></script>
+        function leaveLobby() {
+            if (confirm('Are you sure you want to leave the lobby?')) {
+                if (ws) {
+                    ws.close();
+                }
+                window.location.href = '/';
+            }
+        }
+    </script>
+
+    <script src="/egyptian-war/startgamehandler.js"></script>
 
 </body>
 
