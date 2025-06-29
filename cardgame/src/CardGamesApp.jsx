@@ -200,7 +200,45 @@ function HomeView() {
             <div style={{ marginTop: 30 }}>
                 <PlayerStatsBar />
             </div>
+
+            {/* New Multiplayer Section */}
+            <div style={{ marginTop: 40 }}>
+                <div className="cg-subtitle" style={{ marginBottom: 20 }}>Multiplayer Card Games</div>
+                <div className="cg-grid">
+                    <MultiplayerGameCard
+                        title="Egyptian War"
+                        description="Battle other players online"
+                        url="https://egyptian-war.onrender.com/"
+                    />
+                </div>
+            </div>
         </div>
+    );
+}
+
+// ---------- Multiplayer Game Card Component ----------
+
+function MultiplayerGameCard({ title, description, url }) {
+    const handleClick = () => {
+        window.open(url, '_blank');
+    };
+
+    return (
+        <motion.div
+            className="cg-card-preview"
+            onClick={handleClick}
+            tabIndex={0}
+            aria-label={`${title} - opens in new tab`}
+            role="button"
+            initial={{ opacity: 0, scale: 0.93 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.07, boxShadow: "0 10px 24px #2225" }}
+            transition={{ duration: 0.28, type: "spring", stiffness: 120 }}
+        >
+            <div className="cg-card-preview-img" />
+            <div className="cg-card-preview-title">{title}</div>
+            <div className="cg-card-preview-desc">{description}</div>
+        </motion.div>
     );
 }
 
