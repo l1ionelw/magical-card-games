@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import PlayingCardView from "./PlayingCardView";
+import PlayingCardView2 from "./PlayingCardView2";
 import PlayingCardBackWithCount from "./PlayingCardBackWithCount";
 
 const fullDeck = () =>
@@ -20,7 +20,7 @@ const canPlay = (card, center) =>
 const rankText = (n) =>
     n === 1 ? "A" : n === 11 ? "J" : n === 12 ? "Q" : n === 13 ? "K" : String(n);
 
-export default function SpeedGame() {
+export default function SpeedGame({ onBack }) {
     const {
         playerDeckInit,
         cpuDeckInit,
@@ -143,12 +143,15 @@ export default function SpeedGame() {
     return (
         <div style={{ padding: 20, maxWidth: 800, margin: "0 auto" }}>
             <h2>Speed Card Game</h2>
+            <button className="cg-btn" style={{ marginBottom: 10 }} onClick={onBack}>
+                Back to Home
+            </button>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <div>
                     <h4>CPU</h4>
                     <div style={{ display: "flex", gap: 4 }}>
                         {cpuHand.map((_, i) => (
-                            <PlayingCardView key={i} card={{ isFaceUp: false }} style={{ transition: "all 0.3s" }} />
+                            <PlayingCardView2 key={i} card={{ isFaceUp: false }} style={{ transition: "all 0.3s" }} />
                         ))}
                     </div>
                 </div>
@@ -161,7 +164,7 @@ export default function SpeedGame() {
                 <PlayingCardBackWithCount count={tieLeft.length} onClick={() => handleTiebreakerClick("left")} />
 
                 {centerPiles.map((card, idx) => (
-                    <PlayingCardView
+                    <PlayingCardView2
                         key={idx}
                         card={{ rank: rankText(card), suit: { symbol: "♠", key: "spades", color: "black" }, isFaceUp: true }}
                         style={{ transition: "all 0.3s ease-in-out", transform: "scale(1.1)" }}
@@ -195,7 +198,7 @@ export default function SpeedGame() {
                                         transition: "transform 0.2s",
                                     }}
                                 >
-                                    <PlayingCardView
+                                    <PlayingCardView2
                                         card={{ rank: rankText(card), suit: { symbol: "♥", key: "hearts", color: "red" }, isFaceUp: true }}
                                     />
                                 </button>
