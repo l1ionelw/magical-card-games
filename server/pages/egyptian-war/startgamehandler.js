@@ -10,6 +10,7 @@ let slammed_player_index = -1;
 // set current turn index to the 0th index, assuming everyone's players list is the same order
 let currentTurnIndex = 0;
 let canPlace = true;
+let gameOver = false;
 
 // go by players order (by index), then wait for server response of a card and update state accordingly
 function startGameHandler() {
@@ -136,6 +137,10 @@ function startGameHandler() {
         if (event.key === 'q') document.getElementById('slam-btn').click()
         if (event.key === 'w') document.getElementById('place-card-btn').click()
     });
+
+    setInterval(() => {
+        if (!gameOver) { checkGameEnd() }
+    }, 1000);
 }
 
 function updateCurrentTurn() {
@@ -211,13 +216,23 @@ function setupGameWebsockets() {
 
             if (data.display_name === username) {
                 // im the one who slammed, gonna take all cards and empty deck
-                while (current_deck_stack.length !== 0) {
-                    current_deck.push(current_deck_stack.pop());
+                // Add all stack cards to current deck
+                current_deck = current_deck.concat(current_deck_stack);
+                current_deck_stack = [];
+
+                // fisher yates algorithm
+                for (let i = current_deck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [current_deck[i], current_deck[j]] = [current_deck[j], current_deck[i]];
                 }
             } else {
                 // i didnt slam, so im just gonna empty card deck and update card amounts
                 current_deck_stack = [];
             }
+            special_card_curriter = 0;
+            special_card_maxiter = 0;
+            slammed_player_index = -1;
+
             renderPlayers({ renderNames: true });
         }
         if (data.action === "place_card") {
@@ -290,10 +305,13 @@ function setupGameWebsockets() {
             console.log("wasn't special, still not");
             updateCurrentTurn();
             renderPlayers({ renderNames: true, cardName: data.card });
-            if (checkGameEnd()) {
-                renderGameEndScreen();
-                gameWs.close();
-            }
+        }
+        if (data.action === "false_slam") {
+            const userIndexOfFakeSlam = players.findIndex(player => player.display_name === data.display_name);
+            // update the card numbers + card stack
+            card_amounts[userIndexOfFakeSlam] -= 1;
+            current_deck_stack.unshift(data.card);
+            renderPlayers({ renderNames: true, cardName: current_deck_stack[current_deck_stack.length - 1], type: "false_slam" });
         }
     };
 }
@@ -350,7 +368,13 @@ function handleSlam() {
     // check is special card?
     if (special_card_curriter !== 0) { console.log("slammed while there's a special card!") }
 
-    if (!isSlamValid) return;
+    if (!isSlamValid) {
+        console.log("slam is not valid, making you put one into the deck");
+        // pop from his card deck
+        const cardRemoved = current_deck.pop();
+        gameWs.send(JSON.stringify({ action: "false_slam", display_name: username, card: cardRemoved }))
+        return;
+    }
     // slam went through, gonna tell everyone now
     gameWs.send(JSON.stringify({ action: "slam", display_name: username, type: "normal" }));
 }
@@ -395,8 +419,9 @@ function initialRender() {
 }
 
 
-function renderPlayers({ renderNames = true, cardName = "" } = {}) {
-    renderCardPlaced(cardName, () => renderUI({ renderNames: renderNames }));
+function renderPlayers({ renderNames = true, cardName = "", type = "" } = {}) {
+    if (gameOver) return;
+    renderCardPlaced(cardName, () => renderUI({ renderNames: renderNames }), type);
 }
 
 function renderUI({ renderNames = true }) {
@@ -454,7 +479,7 @@ function renderPlayerName(ctx, x, y, name) {
     ctx.fillText(name, x, y);
 }
 
-function renderCardPlaced(card_name, after_finished) {
+function renderCardPlaced(card_name, after_finished, type) {
     if (!card_name || card_name === "") {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         after_finished();
@@ -465,6 +490,10 @@ function renderCardPlaced(card_name, after_finished) {
     let scale = 0.01;
     targetScale = 0.25;
     let direction = 0.025; // speed to change scale for
+
+    // offsets for false slam movement
+    let offset_steps = 10;
+    let targetOffsets = [20, -40, 20];
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         after_finished();
@@ -477,63 +506,153 @@ function renderCardPlaced(card_name, after_finished) {
         }
         requestAnimationFrame(draw);
     }
+    function drawFalseSlam(targetOffsets, currentOffsetIndex, current_offset) {
+        if (currentOffsetIndex >= targetOffsets.length) {
+            // do one more step to the left bc im too lazy to fix the code w workaroundDDDDDDDD YAY (imma kms)
+            current_offset -= 10;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            after_finished();
+            ctx.drawImage(image,
+                canvas.width / 2 - (image.width * targetScale / 2) + current_offset,
+                canvas.height / 2 - (image.height * targetScale / 2),
+                image.width * targetScale,
+                image.height * targetScale);
+            return;
+        }
+
+        let target = targetOffsets[currentOffsetIndex];
+        let direction = target > current_offset ? offset_steps : -offset_steps;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        after_finished();
+
+        // Apply the offset to the x position
+        ctx.drawImage(image,
+            canvas.width / 2 - (image.width * targetScale / 2) + current_offset,
+            canvas.height / 2 - (image.height * targetScale / 2),
+            image.width * targetScale,
+            image.height * targetScale);
+
+        // Check if we've reached the target
+        if (Math.abs(current_offset - target) <= Math.abs(offset_steps)) {
+            current_offset = target; // Snap to target
+            currentOffsetIndex += 1;
+        } else {
+            current_offset += direction;
+        }
+
+        requestAnimationFrame(() => { drawFalseSlam(targetOffsets, currentOffsetIndex, current_offset) });
+    }
     image.onload = function () {
-        draw();
+        if (type === "false_slam") { console.log("doing false slam animation"); drawFalseSlam(targetOffsets, 0, 0); }
+        else draw();
+
     }
     image.onerror = function () {
         console.error("image error");
     }
 }
+
+
 function renderGameEndScreen(winner) {
-    // Clear the entire canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const startTime = Date.now();
+    const confettiParticles = [];
 
-    // Create gradient background
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#1a252f');
-    gradient.addColorStop(0.5, '#2c3e50');
-    gradient.addColorStop(1, '#34495e');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Add confetti-like particles
-    for (let i = 0; i < 50; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const size = Math.random() * 8 + 4;
-        ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 60%)`;
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
+    // Create confetti particles with their properties
+    for (let i = 0; i < 80; i++) {
+        confettiParticles.push({
+            id: i,
+            launchAngle: (Math.PI / 3) + (Math.random() - 0.5) * (Math.PI / 3), // 60° to 120°
+            initialVelocity: 300 + Math.random() * 250, // Increased from 150 + 100
+            launchX: canvas.width / 2 + (Math.random() - 0.5) * 100,
+            launchY: canvas.height,
+            size: 4 + Math.random() * 4,
+            hue: (i * 37) % 360,
+            launchDelay: (i % 20) * 50 // Stagger launches by 50ms
+        });
     }
 
-    // Main "GAME OVER" text
-    ctx.font = "bold 48px Arial";
-    ctx.fillStyle = "#ffffff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 80);
+    function animateGameEnd() {
+        const currentTime = Date.now();
+        const elapsedTime = (currentTime - startTime) / 1000; // Convert to seconds
 
-    // Winner announcement
-    ctx.font = "bold 32px Arial";
-    ctx.fillStyle = "#f1c40f";
-    ctx.fillText(`🎉 ${winner.display_name} WINS! 🎉`, canvas.width / 2, canvas.height / 2 - 20);
+        // Clear the entire canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Final scores
-    ctx.font = "20px Arial";
-    ctx.fillStyle = "#ecf0f1";
-    ctx.fillText("Final Scores:", canvas.width / 2, canvas.height / 2 + 40);
+        // Create gradient background
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, '#1a252f');
+        gradient.addColorStop(0.5, '#2c3e50');
+        gradient.addColorStop(1, '#34495e');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    players.forEach((player, index) => {
-        const yPos = canvas.height / 2 + 80 + (index * 30);
-        ctx.fillStyle = index === players.indexOf(winner) ? "#f1c40f" : "#bdc3c7";
-        ctx.fillText(`${player.display_name}: ${card_amounts[index]} cards`, canvas.width / 2, yPos);
-    });
+        // Draw animated confetti
+        confettiParticles.forEach(particle => {
+            const particleTime = elapsedTime - (particle.launchDelay / 1000);
+
+            // Only animate if particle has launched
+            if (particleTime > 0) {
+                const gravity = 200;
+
+                // Calculate position using physics
+                const vx = particle.initialVelocity * Math.cos(particle.launchAngle);
+                const vy = particle.initialVelocity * Math.sin(particle.launchAngle);
+
+                const x = particle.launchX + vx * particleTime;
+                const y = particle.launchY - (vy * particleTime - 0.5 * gravity * particleTime * particleTime);
+
+                // Only draw if particle is above launch point and within bounds
+                if (y < particle.launchY && x > -20 && x < canvas.width + 20 && y > -20) {
+                    const rotation = particleTime * 8 + particle.id;
+
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+
+                    ctx.fillStyle = `hsl(${particle.hue}, 80%, 65%)`;
+                    ctx.fillRect(-particle.size / 2, -particle.size / 4, particle.size, particle.size / 2);
+
+                    ctx.restore();
+                }
+            }
+        });
+
+        // Draw text elements
+        ctx.font = "bold 48px Arial";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 80);
+
+        ctx.font = "bold 32px Arial";
+        ctx.fillStyle = "#f1c40f";
+        ctx.fillText(`🎉 ${winner.display_name} WINS! 🎉`, canvas.width / 2, canvas.height / 2 - 20);
+
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "#ecf0f1";
+        ctx.fillText("Final Scores:", canvas.width / 2, canvas.height / 2 + 40);
+
+        players.forEach((player, index) => {
+            const yPos = canvas.height / 2 + 80 + (index * 30);
+            ctx.fillStyle = index === players.indexOf(winner) ? "#f1c40f" : "#bdc3c7";
+            ctx.fillText(`${player.display_name}: ${card_amounts[index]} cards`, canvas.width / 2, yPos);
+        });
+
+        // Continue animation for 5 seconds
+        if (elapsedTime < 5) {
+            requestAnimationFrame(animateGameEnd);
+        }
+    }
+
+    // Start the animation
+    animateGameEnd();
 }
 
 function checkGameEnd() {
     const playersWithCards = card_amounts.filter(amount => amount > 0);
     if (playersWithCards.length === 1) {
+        gameOver = true;
         const winnerIndex = card_amounts.findIndex(amount => amount > 0);
         const winner = players[winnerIndex];
         renderGameEndScreen(winner);
